@@ -30,6 +30,12 @@
             <p>Tap to mark</p>
             <div id="host-ticket" class="ticket-grid"></div>
         </div>
+
+        <div class="host-player-list">
+            <h2>Live Players</h2>
+            <ul id="active-players">
+                </ul>
+        </div>
     </main>
 
     <div id="board-modal" class="modal">
@@ -47,7 +53,7 @@
         // ==========================================
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
-        const firebaseConfig = {
+       const firebaseConfig = {
     apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
     authDomain: "housieapp-3dc3e.firebaseapp.com",
     databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
@@ -65,7 +71,6 @@
         let numberBag = Array.from({length: 90}, (_, i) => i + 1); 
         const currentNumberDisplay = document.getElementById('current-number');
 
-        // Generate Room Code
         function generateRoomCode() {
             const numbers = '0123456789';
             let code = '';
@@ -76,17 +81,51 @@
         const myRoomCode = generateRoomCode();
         document.getElementById('room-code-display').innerText = myRoomCode;
 
-        // Firebase Room Setup
         const roomRef = db.ref('rooms/' + myRoomCode);
         roomRef.child('latestNumber').set("Ready");
         roomRef.child('resetTrigger').set(Date.now());
+        roomRef.child('claims').remove(); // Clear prizes on startup
 
-        // Live Player Counter
+        // --- NEW: PLAYER LIST & KICKING ---
         roomRef.child('players').on('value', (snapshot) => {
-            const players = snapshot.val();
-            const count = players ? Object.keys(players).length : 0;
+            const players = snapshot.val() || {};
             const countDisplay = document.getElementById('player-count-display');
-            if (countDisplay) countDisplay.innerText = count;
+            const playerList = document.getElementById('active-players');
+            
+            countDisplay.innerText = Object.keys(players).length;
+            playerList.innerHTML = ''; // Clear list
+
+            for (let playerId in players) {
+                let li = document.createElement('li');
+                li.className = 'player-item';
+                li.innerHTML = `
+                    <span>${players[playerId].name}</span>
+                    <button class="kick-btn" onclick="kickPlayer('${playerId}')">Kick</button>
+                `;
+                playerList.appendChild(li);
+            }
+        });
+
+        function kickPlayer(playerId) {
+            if(confirm("Remove this player from the game?")) {
+                roomRef.child('players/' + playerId).remove();
+            }
+        }
+
+        // --- NEW: LISTEN FOR PRIZES ---
+        let knownClaims = {};
+        roomRef.child('claims').on('value', (snapshot) => {
+            const claims = snapshot.val() || {};
+            for(let prizeId in claims) {
+                if(!knownClaims[prizeId]) {
+                    alert(`🎉 ${claims[prizeId].winner} just claimed ${claims[prizeId].prizeName}! 🎉`);
+                    knownClaims[prizeId] = true;
+                }
+            }
+            // Sync resets
+            for(let prizeId in knownClaims) {
+                if(!claims[prizeId]) delete knownClaims[prizeId];
+            }
         });
 
         // Board & Ticket Logic
@@ -111,8 +150,7 @@
             const ticketLayouts = [
                 [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 1, 0, 1], [1, 1, 0, 0, 1, 0, 0, 1, 1] ],
                 [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 0, 0, 1, 0, 1, 0, 1, 1], [1, 1, 1, 0, 0, 0, 1, 1, 0] ],
-                [ [1, 1, 0, 1, 0, 1, 0, 0, 1], [1, 0, 1, 0, 1, 0, 1, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ],
-                [ [1, 0, 0, 1, 1, 1, 0, 1, 0], [0, 1, 1, 0, 0, 1, 1, 0, 1], [1, 1, 0, 1, 1, 0, 0, 1, 0] ]
+                [ [1, 1, 0, 1, 0, 1, 0, 0, 1], [1, 0, 1, 0, 1, 0, 1, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ]
             ];
 
             const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
@@ -125,15 +163,11 @@
                 for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
 
                 let selectedForCol = [];
-                for (let n = 0; n < numbersNeeded; n++) {
-                    selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
-                }
+                for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
                 selectedForCol.sort((a, b) => a - b); 
 
                 let numIndex = 0;
-                for (let row = 0; row < 3; row++) {
-                    ticketNumbers[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
-                }
+                for (let row = 0; row < 3; row++) ticketNumbers[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
             }
 
             for (let row = 0; row < 3; row++) {
@@ -166,7 +200,7 @@
         }
 
         function resetGame() {
-            if (!confirm("Reset game?")) return; 
+            if (!confirm("Start a new game and reset all tickets?")) return; 
             
             numberBag = Array.from({length: 90}, (_, i) => i + 1);
             currentNumberDisplay.innerText = "Go!";
@@ -175,15 +209,14 @@
 
             roomRef.child('resetTrigger').set(Date.now());
             roomRef.child('latestNumber').set("Ready");
+            roomRef.child('claims').remove(); // This turns the buttons back on for players!
         }
 
-        // Modals
         const modal = document.getElementById('board-modal');
         function openModal() { modal.style.display = "flex"; }
         function closeModal() { modal.style.display = "none"; }
         window.onclick = function(event) { if (event.target == modal) closeModal(); }
 
-        // Initialize
         setupFullBoard();
         generateHostTicket();
     </script>

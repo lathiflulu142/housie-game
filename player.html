@@ -10,8 +10,9 @@
     <div id="join-screen" class="join-container">
         <div class="join-box">
             <h1>🎟️ Join Game</h1>
-            <p>Ask the host for the 4-digit Room Code!</p>
-            <input type="text" id="room-code-input" inputmode="numeric" pattern="[0-9]*" placeholder="1234" maxlength="4" autocomplete="off">
+            <p>Enter the code and your name to join!</p>
+            <input type="text" id="room-code-input" inputmode="numeric" pattern="[0-9]*" placeholder="Code (e.g. 1234)" maxlength="4" autocomplete="off">
+            <input type="text" id="player-name-input" placeholder="Your Name" autocomplete="off" maxlength="15">
             <button id="join-btn" onclick="joinRoom()">Enter Game</button>
         </div>
     </div>
@@ -23,7 +24,7 @@
                 <div class="room-badge">Room: <span id="player-room-display"></span></div>
             </div>
             <div class="header-actions">
-                <button id="show-board-btn" onclick="openModal()">🔢 Called Numbers</button>
+                <button id="show-board-btn" onclick="openModal()">🔢 Called</button>
             </div>
         </header>
 
@@ -34,16 +35,15 @@
 
             <div class="ticket-container">
                 <h2>My Ticket</h2>
-                <p>Tap a number when the host calls it!</p>
                 <div id="player-ticket" class="ticket-grid"></div>
             </div>
 
-            <div class="claims-container">
-                <button class="claim-btn" onclick="claimPrize('Jaldi 5')">Jaldi 5</button>
-                <button class="claim-btn" onclick="claimPrize('Top Line')">Top Line</button>
-                <button class="claim-btn" onclick="claimPrize('Middle Line')">Mid Line</button>
-                <button class="claim-btn" onclick="claimPrize('Bottom Line')">Bot Line</button>
-                <button class="claim-btn full-house" onclick="claimPrize('Full House')">🎉 FULL HOUSE 🎉</button>
+            <div class="claims-container" id="claims-box">
+                <button id="btn-jaldi" class="claim-btn" onclick="claimPrize('jaldi', 'Jaldi 5')">Jaldi 5</button>
+                <button id="btn-top" class="claim-btn" onclick="claimPrize('top', 'Top Line')">Top Line</button>
+                <button id="btn-mid" class="claim-btn" onclick="claimPrize('mid', 'Middle Line')">Mid Line</button>
+                <button id="btn-bot" class="claim-btn" onclick="claimPrize('bot', 'Bottom Line')">Bot Line</button>
+                <button id="btn-full" class="claim-btn full-house" onclick="claimPrize('full', 'Full House')">🎉 FULL HOUSE 🎉</button>
             </div>
         </main>
     </div>
@@ -78,23 +78,32 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         let currentRoomRef = null; 
+        let myPlayerName = "";
+        let myPlayerId = "";
 
-        // --- JOIN ROOM LOGIC ---
         function joinRoom() {
             const codeInput = document.getElementById('room-code-input').value;
+            myPlayerName = document.getElementById('player-name-input').value.trim();
             
-            if (codeInput.length !== 4 || isNaN(codeInput)) {
-                alert("Please enter a valid 4-digit Room Code.");
-                return;
-            }
+            if (codeInput.length !== 4 || isNaN(codeInput)) { alert("Please enter a 4-digit Room Code."); return; }
+            if (myPlayerName === "") { alert("Please enter your name!"); return; }
 
             currentRoomRef = db.ref('rooms/' + codeInput);
+            myPlayerId = "player_" + Date.now();
+            const myPlayerRef = currentRoomRef.child('players/' + myPlayerId);
 
-            // Player Counting Magic
-            const playerId = "player_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
-            const myPlayerRef = currentRoomRef.child('players/' + playerId);
-            myPlayerRef.set(true); 
+            // Add player with their Name!
+            myPlayerRef.set({ name: myPlayerName }); 
             myPlayerRef.onDisconnect().remove(); 
+
+            // --- NEW: KICK DETECTOR ---
+            myPlayerRef.on('value', (snapshot) => {
+                // If your database node disappears, you were kicked!
+                if (snapshot.val() === null && document.getElementById('game-screen').style.display === 'block') {
+                    alert("The host has removed you from the room.");
+                    window.location.reload(); 
+                }
+            });
 
             // Listen for Numbers
             currentRoomRef.child('latestNumber').on('value', (snapshot) => {
@@ -116,12 +125,48 @@
                 }
             });
 
-            // Switch Screens
+            // --- NEW: PRIZE NOTIFICATIONS & BUTTON HIDING ---
+            let knownClaims = {};
+            currentRoomRef.child('claims').on('value', (snapshot) => {
+                const claims = snapshot.val() || {};
+                
+                // 1. Hide buttons if someone already claimed it
+                const prizeList = ['jaldi', 'top', 'mid', 'bot', 'full'];
+                prizeList.forEach(id => {
+                    const btn = document.getElementById('btn-' + id);
+                    if (btn) btn.style.display = claims[id] ? 'none' : 'inline-block';
+                });
+
+                // 2. Alert everyone who won
+                for(let prizeId in claims) {
+                    if(!knownClaims[prizeId]) {
+                        alert(`🎉 ${claims[prizeId].winner} just claimed ${claims[prizeId].prizeName}! 🎉`);
+                        knownClaims[prizeId] = true;
+                    }
+                }
+                
+                // 3. Reset local memory if Host resets game
+                for(let prizeId in knownClaims) {
+                    if(!claims[prizeId]) delete knownClaims[prizeId];
+                }
+            });
+
             document.getElementById('join-screen').style.display = 'none';
             document.getElementById('game-screen').style.display = 'block';
             document.getElementById('player-room-display').innerText = codeInput;
 
             generatePlayerTicket();
+        }
+
+        // --- NEW: CLAIMING A PRIZE ---
+        function claimPrize(prizeId, prizeName) {
+            if (confirm(`Are you sure you want to claim ${prizeName}?`)) {
+                // Save it to Firebase so everyone sees!
+                currentRoomRef.child('claims/' + prizeId).set({
+                    winner: myPlayerName,
+                    prizeName: prizeName
+                });
+            }
         }
 
         // --- TICKET GENERATOR ---
@@ -133,8 +178,7 @@
             const ticketLayouts = [
                 [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 1, 0, 1], [1, 1, 0, 0, 1, 0, 0, 1, 1] ],
                 [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 0, 0, 1, 0, 1, 0, 1, 1], [1, 1, 1, 0, 0, 0, 1, 1, 0] ],
-                [ [1, 1, 0, 1, 0, 1, 0, 0, 1], [1, 0, 1, 0, 1, 0, 1, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ],
-                [ [1, 0, 0, 1, 1, 1, 0, 1, 0], [0, 1, 1, 0, 0, 1, 1, 0, 1], [1, 1, 0, 1, 1, 0, 0, 1, 0] ]
+                [ [1, 1, 0, 1, 0, 1, 0, 0, 1], [1, 0, 1, 0, 1, 0, 1, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ]
             ];
 
             const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
@@ -147,15 +191,11 @@
                 for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
 
                 let selectedForCol = [];
-                for (let n = 0; n < numbersNeeded; n++) {
-                    selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
-                }
+                for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
                 selectedForCol.sort((a, b) => a - b); 
 
                 let numIndex = 0;
-                for (let row = 0; row < 3; row++) {
-                    ticketNumbers[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
-                }
+                for (let row = 0; row < 3; row++) ticketNumbers[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
             }
 
             for (let row = 0; row < 3; row++) {
@@ -171,10 +211,6 @@
                     ticketDiv.appendChild(cell);
                 }
             }
-        }
-
-        function claimPrize(prizeName) {
-            alert(`You are claiming: ${prizeName}!\nYell it out!`);
         }
 
         function setupFullBoard() {

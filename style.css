@@ -181,3 +181,36 @@ header h1 { font-size: 22px; color: #2c3e50; }
     margin-left: 8px; /* Spaces it away from the room code */
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
+/* --- NEW FEATURES: PLAYER LIST & KICK --- */
+#player-name-input {
+    width: 80%; padding: 15px; font-size: 20px; font-weight: bold;
+    text-align: center; border: 2px solid #ccc; border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.host-player-list {
+    background: rgba(255, 255, 255, 0.85);
+    padding: 15px; border-radius: 15px; margin: 20px auto;
+    width: 95%; max-width: 600px; border: 2px dashed #00b09b;
+    text-align: left;
+}
+
+.host-player-list h2 { font-size: 18px; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-bottom: 10px;}
+
+#active-players {
+    list-style: none; padding: 0; margin: 0;
+    max-height: 150px; overflow-y: auto;
+}
+
+.player-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #f1f2f6; padding: 8px 12px; border-radius: 8px; margin-bottom: 5px;
+    font-weight: bold; color: #2c3e50;
+}
+
+.kick-btn {
+    background: #ff4757; color: white; border: none;
+    padding: 5px 10px; border-radius: 5px; cursor: pointer;
+    font-weight: bold; font-size: 12px;
+}
+.kick-btn:active { transform: scale(0.9); }
