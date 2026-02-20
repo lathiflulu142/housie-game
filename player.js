@@ -17,36 +17,66 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 let currentRoomRef = null; 
 
-// --- JOIN ROOM ---
 function joinRoom() {
-    const codeInput = document.getElementById('room-code-input').value;
-    
-    if (codeInput.length !== 4 || isNaN(codeInput)) {
-        alert("Please enter a valid 4-digit Room Code.");
-        return;
-    }
-
-    currentRoomRef = db.ref('rooms/' + codeInput);
-
-    // 1. Listen for new numbers
+    // 1. Listen for new numbers & highlight them on the popup board
     currentRoomRef.child('latestNumber').on('value', (snapshot) => {
         const num = snapshot.val();
-        if (num) document.getElementById('latest-called-num').innerText = num;
+        if (num && num !== "Ready") {
+            // Show the big number
+            document.getElementById('latest-called-num').innerText = num;
+            
+            // Highlight it green on the 1-90 board
+            const boardCell = document.getElementById(`board-num-${num}`);
+            if (boardCell) boardCell.classList.add('called');
+        }
     });
 
     // 2. Listen for resets
     currentRoomRef.child('resetTrigger').on('value', (snapshot) => {
         const data = snapshot.val();
-        if (data) generatePlayerTicket(); // Make new ticket if host resets
+        if (data) {
+            generatePlayerTicket(); // Give them a fresh ticket
+            
+            // Clear the "Host Called" text
+            document.getElementById('latest-called-num').innerText = "Waiting...";
+            
+            // Remove all green highlights from the 1-90 board
+            document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called'));
+        }
+    });
+    }
+
+    currentRoomRef = db.ref('rooms/' + codeInput);
+
+    // --- NEW: PLAYER COUNTING LOGIC ---
+    // 1. Create a unique random ID for this specific player
+    const playerId = "player_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+    const myPlayerRef = currentRoomRef.child('players/' + playerId);
+
+    // 2. Add them to the room in Firebase
+    myPlayerRef.set(true);
+
+    // 3. MAGIC: Tell Firebase to delete them automatically if they close the app!
+    myPlayerRef.onDisconnect().remove();
+    // ----------------------------------
+
+    // (Keep your existing listeners below this...)
+    currentRoomRef.child('latestNumber').on('value', (snapshot) => {
+        const num = snapshot.val();
+        if (num) document.getElementById('latest-called-num').innerText = num;
     });
 
-    // 3. Update UI
+    currentRoomRef.child('resetTrigger').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) generatePlayerTicket(); 
+    });
+
     document.getElementById('join-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'block';
     document.getElementById('player-room-display').innerText = codeInput;
 
     generatePlayerTicket();
-}
+
 
 // --- GENERATE TICKET ---
 function generatePlayerTicket() {
@@ -97,10 +127,27 @@ function generatePlayerTicket() {
     }
 }
 
-function getNewTicket() {
-    if (confirm("Clear ticket and get a new one?")) generatePlayerTicket();
-}
-
 function claimPrize(prizeName) {
     alert(`You are claiming: ${prizeName}!\nYell it out!`);
 }
+// --- FULL BOARD & MODAL LOGIC ---
+function setupFullBoard() {
+    const fullBoard = document.getElementById('full-board');
+    if (!fullBoard) return;
+    fullBoard.innerHTML = ''; 
+    for (let i = 1; i <= 90; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('board-cell');
+        cell.id = `board-num-${i}`;
+        cell.innerText = i;
+        fullBoard.appendChild(cell);
+    }
+}
+
+const modal = document.getElementById('board-modal');
+function openModal() { modal.style.display = "flex"; }
+function closeModal() { modal.style.display = "none"; }
+window.onclick = function(event) { if (event.target == modal) closeModal(); }
+
+// Initialize the board as soon as the file loads
+setupFullBoard();

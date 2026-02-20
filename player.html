@@ -23,7 +23,7 @@
                 <div class="room-badge">Room: <span id="player-room-display"></span></div>
             </div>
             <div class="header-actions">
-                <button id="reset-btn" onclick="getNewTicket()">🔄 New Ticket</button>
+                <button id="show-board-btn" onclick="openModal()">🔢 Called Numbers</button>
             </div>
         </header>
 
@@ -46,6 +46,20 @@
                 <button class="claim-btn full-house" onclick="claimPrize('Full House')">🎉 FULL HOUSE 🎉</button>
             </div>
         </main>
+    </div>
+    <div id="board-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2>Numbers Called So Far</h2>
+            <div id="full-board" class="board-grid"></div>
+        </div>
+    </div>
+    <div id="board-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2>Numbers Called So Far</h2>
+            <div id="full-board" class="board-grid"></div>
+        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>

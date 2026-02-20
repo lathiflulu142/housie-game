@@ -32,11 +32,23 @@ function generateRoomCode() {
 const myRoomCode = generateRoomCode();
 document.getElementById('room-code-display').innerText = myRoomCode;
 
-// Create Firebase Room
-const roomRef = db.ref('rooms/' + myRoomCode);
-roomRef.set({
-    latestNumber: "Ready",
-    resetTrigger: Date.now()
+// OLD CODE TO REPLACE:
+// roomRef.set({
+//     latestNumber: "Ready",
+//     resetTrigger: Date.now()
+// });
+
+// NEW CODE:
+// Only update the game state, do NOT wipe out the players folder!
+roomRef.child('latestNumber').set("Ready");
+roomRef.child('resetTrigger').set(Date.now());
+
+// Listen for how many players are in the room!
+roomRef.child('players').on('value', (snapshot) => {
+    const players = snapshot.val();
+    // If there are players, count them. Otherwise, it's 0.
+    const count = players ? Object.keys(players).length : 0;
+    document.getElementById('player-count-display').innerText = count;
 });
 
 // --- BOARD & TICKET SETUP ---
