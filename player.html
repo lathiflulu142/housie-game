@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Housie - Player</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="join-screen" class="join-container">
+        <div class="join-box">
+            <h1>🎟️ Join Game</h1>
+            <p>Ask the host for the 4-letter Room Code!</p>
+            <input type="text" id="room-code-input" inputmode="numeric" pattern="[0-9]*" placeholder="1234" maxlength="4" autocomplete="off">
+            <button id="join-btn" onclick="joinRoom()">Enter Game</button>
+        </div>
+    </div>
+
+    <div id="game-screen" style="display: none;">
+        <header>
+            <div>
+                <h1>🎟️ Player</h1>
+                <div class="room-badge">Room: <span id="player-room-display"></span></div>
+            </div>
+            <div class="header-actions">
+                <button id="reset-btn" onclick="getNewTicket()">🔄 New Ticket</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="ticket-container">
+                <h2>My Ticket</h2>
+                <p>Tap a number when the host calls it!</p>
+                <div id="player-ticket" class="ticket-grid"></div>
+            </div>
+
+            <div class="claims-container">
+                <button class="claim-btn" onclick="claimPrize('Jaldi 5')">Jaldi 5</button>
+                <button class="claim-btn" onclick="claimPrize('Top Line')">Top Line</button>
+                <button class="claim-btn" onclick="claimPrize('Middle Line')">Mid Line</button>
+                <button class="claim-btn" onclick="claimPrize('Bottom Line')">Bot Line</button>
+                <button class="claim-btn full-house" onclick="claimPrize('Full House')">🎉 FULL HOUSE 🎉</button>
+            </div>
+        </main>
+    </div>
+
+    <script src="player.js"></script>
+</body>
+</html>

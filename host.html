@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Housie - Host</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>🎤 Housie</h1>
+            <div class="room-badge">Room Code: <span id="room-code-display">----</span></div>
+        </div>
+        
+        <div class="header-actions">
+            <button id="show-board-btn" onclick="openModal()">🔢 Board</button>
+            <button id="reset-btn" onclick="resetGame()">🔄 Reset</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="draw-section">
+            <div id="current-number">Go!</div>
+            <button id="draw-btn" onclick="drawNumber()">Draw Number</button>
+        </div>
+
+        <div class="ticket-container">
+            <h2>My Ticket</h2>
+            <p>Tap to mark</p>
+            <div id="host-ticket" class="ticket-grid"></div>
+        </div>
+    </main>
+
+    <div id="board-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h2>Called Numbers</h2>
+            <div id="full-board" class="board-grid"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
