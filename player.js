@@ -7,6 +7,7 @@
     projectId: "housieapp-3dc3e",
     storageBucket: "housieapp-3dc3e.firebasestorage.app",
     messagingSenderId: "709288045803",
+    databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
     appId: "1:709288045803:web:3639d923c9461192aae2ae",
     measurementId: "G-YW7N4WMX3V"
   };
