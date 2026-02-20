@@ -42,6 +42,150 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="script.js"></script>
+    
+    <script>
+        // ==========================================
+        // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID",
+            measurementId: "YOUR_MEASUREMENT_ID"
+        };
+        // ==========================================
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let numberBag = Array.from({length: 90}, (_, i) => i + 1); 
+        const currentNumberDisplay = document.getElementById('current-number');
+
+        // Generate Room Code
+        function generateRoomCode() {
+            const numbers = '0123456789';
+            let code = '';
+            for (let i = 0; i < 4; i++) code += numbers.charAt(Math.floor(Math.random() * numbers.length));
+            return code;
+        }
+
+        const myRoomCode = generateRoomCode();
+        document.getElementById('room-code-display').innerText = myRoomCode;
+
+        // Firebase Room Setup
+        const roomRef = db.ref('rooms/' + myRoomCode);
+        roomRef.child('latestNumber').set("Ready");
+        roomRef.child('resetTrigger').set(Date.now());
+
+        // Live Player Counter
+        roomRef.child('players').on('value', (snapshot) => {
+            const players = snapshot.val();
+            const count = players ? Object.keys(players).length : 0;
+            const countDisplay = document.getElementById('player-count-display');
+            if (countDisplay) countDisplay.innerText = count;
+        });
+
+        // Board & Ticket Logic
+        function setupFullBoard() {
+            const fullBoard = document.getElementById('full-board');
+            if (!fullBoard) return;
+            fullBoard.innerHTML = ''; 
+            for (let i = 1; i <= 90; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('board-cell');
+                cell.id = `board-num-${i}`;
+                cell.innerText = i;
+                fullBoard.appendChild(cell);
+            }
+        }
+
+        function generateHostTicket() {
+            const ticketDiv = document.getElementById('host-ticket');
+            if (!ticketDiv) return;
+            ticketDiv.innerHTML = ''; 
+            
+            const ticketLayouts = [
+                [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 1, 0, 1], [1, 1, 0, 0, 1, 0, 0, 1, 1] ],
+                [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 0, 0, 1, 0, 1, 0, 1, 1], [1, 1, 1, 0, 0, 0, 1, 1, 0] ],
+                [ [1, 1, 0, 1, 0, 1, 0, 0, 1], [1, 0, 1, 0, 1, 0, 1, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ],
+                [ [1, 0, 0, 1, 1, 1, 0, 1, 0], [0, 1, 1, 0, 0, 1, 1, 0, 1], [1, 1, 0, 1, 1, 0, 0, 1, 0] ]
+            ];
+
+            const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
+            const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
+            let ticketNumbers = [[], [], []];
+
+            for (let col = 0; col < 9; col++) {
+                let numbersNeeded = (ticketPattern[0][col] + ticketPattern[1][col] + ticketPattern[2][col]);
+                let possibleNumbers = [];
+                for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
+
+                let selectedForCol = [];
+                for (let n = 0; n < numbersNeeded; n++) {
+                    selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
+                }
+                selectedForCol.sort((a, b) => a - b); 
+
+                let numIndex = 0;
+                for (let row = 0; row < 3; row++) {
+                    ticketNumbers[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
+                }
+            }
+
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 9; col++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    if (ticketNumbers[row][col] !== null) {
+                        cell.innerText = ticketNumbers[row][col];
+                        cell.addEventListener('pointerdown', function() { this.classList.toggle('marked'); });
+                    } else {
+                        cell.classList.add('empty');
+                    }
+                    ticketDiv.appendChild(cell);
+                }
+            }
+        }
+
+        // Actions
+        function drawNumber() {
+            if (numberBag.length === 0) return;
+            const drawnNum = numberBag.splice(Math.floor(Math.random() * numberBag.length), 1)[0];
+            
+            currentNumberDisplay.innerText = drawnNum;
+            currentNumberDisplay.style.fontSize = "60px";
+
+            const boardCell = document.getElementById(`board-num-${drawnNum}`);
+            if (boardCell) boardCell.classList.add('called');
+
+            roomRef.child('latestNumber').set(drawnNum);
+        }
+
+        function resetGame() {
+            if (!confirm("Reset game?")) return; 
+            
+            numberBag = Array.from({length: 90}, (_, i) => i + 1);
+            currentNumberDisplay.innerText = "Go!";
+            document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called'));
+            generateHostTicket();
+
+            roomRef.child('resetTrigger').set(Date.now());
+            roomRef.child('latestNumber').set("Ready");
+        }
+
+        // Modals
+        const modal = document.getElementById('board-modal');
+        function openModal() { modal.style.display = "flex"; }
+        function closeModal() { modal.style.display = "none"; }
+        window.onclick = function(event) { if (event.target == modal) closeModal(); }
+
+        // Initialize
+        setupFullBoard();
+        generateHostTicket();
+    </script>
 </body>
 </html>
