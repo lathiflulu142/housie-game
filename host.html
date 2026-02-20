@@ -7,13 +7,11 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <header>
         <div>
             <h1>🎤 Housie</h1>
             <div class="room-badge">Room Code: <span id="room-code-display">----</span></div>
         </div>
-        
         <div class="header-actions">
             <button id="show-board-btn" onclick="openModal()">🔢 Board</button>
             <button id="reset-btn" onclick="resetGame()">🔄 Reset</button>
@@ -41,6 +39,8 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

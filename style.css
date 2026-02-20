@@ -8,7 +8,6 @@ body {
     color: #333; 
     min-height: 100vh;
     padding-bottom: 20px;
-    /* Prevents pull-to-refresh on mobile browsers */
     overscroll-behavior-y: contain; 
 }
 
@@ -18,7 +17,7 @@ body {
     100% { background-position: 0% 50%; }
 }
 
-/* --- MOBILE HEADER --- */
+/* --- HEADER --- */
 header {
     display: flex; justify-content: space-between; align-items: center;
     background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px);
@@ -27,12 +26,16 @@ header {
 }
 
 header h1 { font-size: 22px; color: #2c3e50; }
-
+.room-badge {
+    background: #2c3e50; color: #f1c40f; padding: 5px 12px;
+    border-radius: 8px; font-size: 14px; font-weight: bold;
+    display: inline-block; margin-top: 5px; letter-spacing: 2px;
+}
 .header-actions { display: flex; gap: 8px; }
 
 #show-board-btn, #reset-btn {
     border: none; padding: 8px 12px; border-radius: 8px; font-weight: bold;
-    font-size: 12px; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    font-size: 12px; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); cursor: pointer;
 }
 #show-board-btn { background: linear-gradient(135deg, #6e8efb, #a777e3); }
 #reset-btn { background: linear-gradient(135deg, #ff6a00, #ee0979); }
@@ -52,15 +55,15 @@ header h1 { font-size: 22px; color: #2c3e50; }
 #draw-btn {
     background: linear-gradient(45deg, #00b09b, #96c93d); color: white;
     border: none; padding: 15px 40px; font-size: 20px; border-radius: 50px;
-    font-weight: bold; border: 2px solid white;
+    font-weight: bold; border: 2px solid white; cursor: pointer;
     box-shadow: 0 8px 15px rgba(0, 176, 155, 0.4);
 }
 #draw-btn:active { transform: translateY(2px) scale(0.95); }
 
-/* --- MOBILE TICKET --- */
+/* --- TICKETS --- */
 .ticket-container {
     background: rgba(255, 255, 255, 0.85); padding: 15px; 
-    border-radius: 15px; text-align: center; width: 95%; margin: 0 auto;
+    border-radius: 15px; text-align: center; width: 95%; max-width: 600px; margin: 0 auto;
     border: 2px dashed #a777e3;
 }
 .ticket-container h2 { font-size: 20px; color: #6e8efb; }
@@ -72,16 +75,16 @@ header h1 { font-size: 22px; color: #2c3e50; }
 }
 .cell {
     background-color: white; aspect-ratio: 1; display: flex;
-    justify-content: center; align-items: center; font-size: 13px; 
-    font-weight: 800; color: #2d3436; user-select: none; border-radius: 4px;
+    justify-content: center; align-items: center; font-size: 15px; 
+    font-weight: 800; color: #2d3436; user-select: none; border-radius: 4px; cursor: pointer;
 }
-.cell.empty { background-color: transparent; }
+.cell.empty { background-color: transparent; cursor: default;}
 .cell.marked { 
     background: linear-gradient(135deg, #ff0844, #ffb199); 
     color: white; border-radius: 50%; transform: scale(0.9);
 }
 
-/* --- MOBILE POPUP BOARD --- */
+/* --- MODAL --- */
 .modal {
     display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background-color: rgba(0,0,0,0.8); z-index: 1000;
@@ -89,16 +92,15 @@ header h1 { font-size: 22px; color: #2c3e50; }
 }
 .modal-content {
     background: white; padding: 20px 10px; border-radius: 20px;
-    width: 95%; text-align: center; position: relative;
-    max-height: 90vh; overflow-y: auto; /* Allows scrolling if needed */
+    width: 95%; max-width: 500px; text-align: center; position: relative;
+    max-height: 90vh; overflow-y: auto; 
 }
 .close-btn {
     position: absolute; top: 5px; right: 15px; font-size: 30px;
-    font-weight: bold; color: #ff0844;
+    font-weight: bold; color: #ff0844; cursor: pointer;
 }
 .modal-content h2 { margin-bottom: 15px; font-size: 20px; }
 
-/* Adjusted for 10 columns on a narrow phone screen */
 .board-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
 .board-cell {
     background-color: #f1f2f6; padding: 8px 0; border-radius: 4px;
@@ -108,127 +110,61 @@ header h1 { font-size: 22px; color: #2c3e50; }
     background: linear-gradient(45deg, #00b09b, #96c93d); 
     color: white; transform: scale(1.1); z-index: 2;
 }
+
+/* --- LANDING & JOIN SCREENS --- */
+.landing-container, .join-container {
+    display: flex; justify-content: center; align-items: center;
+    height: 100vh; width: 100%; padding: 20px;
+}
+.landing-box, .join-box {
+    background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px);
+    padding: 40px 20px; border-radius: 25px; text-align: center;
+    width: 100%; max-width: 400px; box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    border: 3px solid white;
+}
+.logo-circle {
+    font-size: 60px; background: white; width: 100px; height: 100px;
+    margin: 0 auto 20px auto; display: flex; justify-content: center;
+    align-items: center; border-radius: 50%; box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+.landing-box h1, .join-box h1 { color: #2c3e50; font-size: 32px; margin-bottom: 10px; }
+.landing-box p, .join-box p { color: #7f8c8d; margin-bottom: 30px; font-size: 16px; }
+
+.button-stack { display: flex; flex-direction: column; gap: 15px; }
+.role-btn, #join-btn {
+    border: none; padding: 18px; font-size: 18px; border-radius: 15px;
+    font-weight: bold; cursor: pointer; box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    transition: transform 0.2s; width: 100%; color: white;
+}
+.role-btn:active, #join-btn:active { transform: scale(0.95); }
+.host-btn { background: linear-gradient(135deg, #6e8efb, #a777e3); }
+.player-btn { background: linear-gradient(135deg, #00b09b, #96c93d); }
+#join-btn { background: linear-gradient(135deg, #00b09b, #96c93d); width: 80%; }
+
+#room-code-input {
+    width: 80%; padding: 15px; font-size: 30px; font-weight: bold;
+    text-align: center; border: 2px solid #ccc; border-radius: 10px;
+    margin-bottom: 20px; letter-spacing: 5px;
+}
+
 /* --- PLAYER CLAIM BUTTONS --- */
 .claims-container {
-    display: flex; 
-    flex-wrap: wrap; 
-    justify-content: center; 
-    gap: 10px;
-    margin-top: 25px; 
-    width: 95%; 
-    max-width: 500px; 
-    margin-left: auto; 
-    margin-right: auto;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+    margin-top: 25px; width: 95%; max-width: 500px; margin-left: auto; margin-right: auto;
 }
-
 .claim-btn {
-    background: rgba(255, 255, 255, 0.7); 
-    border: 2px solid white;
-    padding: 12px 15px; 
-    border-radius: 12px; 
-    font-weight: bold; 
-    color: #2c3e50;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
-    cursor: pointer; 
-    flex-grow: 1; /* Makes buttons stretch to fill the row */
-    font-size: 14px;
+    background: rgba(255, 255, 255, 0.7); border: 2px solid white;
+    padding: 12px 15px; border-radius: 12px; font-weight: bold; color: #2c3e50;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1); cursor: pointer; flex-grow: 1; font-size: 14px;
 }
-
 .claim-btn:active { transform: scale(0.95); }
-
-/* Make the Full House button stand out! */
 .claim-btn.full-house {
-    background: linear-gradient(135deg, #ff6a00, #ee0979); 
-    color: white;
-    width: 100%; 
-    font-size: 18px; 
-    border: none; 
-    padding: 15px;
-    box-shadow: 0 8px 15px rgba(238, 9, 121, 0.4);
-    animation: pulse 2s infinite;
+    background: linear-gradient(135deg, #ff6a00, #ee0979); color: white;
+    width: 100%; font-size: 18px; border: none; padding: 15px;
+    box-shadow: 0 8px 15px rgba(238, 9, 121, 0.4); animation: pulse 2s infinite;
 }
-
 @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(238, 9, 121, 0.4); }
     70% { box-shadow: 0 0 0 15px rgba(238, 9, 121, 0); }
     100% { box-shadow: 0 0 0 0 rgba(238, 9, 121, 0); }
-}
-/* --- WELCOME / LANDING PAGE STYLES --- */
-.landing-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    width: 100%;
-    padding: 20px;
-}
-
-.landing-box {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(10px);
-    padding: 40px 20px;
-    border-radius: 25px;
-    text-align: center;
-    width: 100%;
-    max-width: 400px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-    border: 3px solid white;
-}
-
-.logo-circle {
-    font-size: 60px;
-    background: white;
-    width: 100px;
-    height: 100px;
-    margin: 0 auto 20px auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 50%;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-}
-
-.landing-box h1 {
-    color: #2c3e50;
-    font-size: 32px;
-    margin-bottom: 10px;
-}
-
-.landing-box p {
-    color: #7f8c8d;
-    margin-bottom: 30px;
-    font-size: 16px;
-    line-height: 1.4;
-}
-
-.button-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.role-btn {
-    border: none;
-    padding: 18px;
-    font-size: 18px;
-    border-radius: 15px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-    transition: transform 0.2s, box-shadow 0.2s;
-    width: 100%;
-}
-
-.role-btn:active {
-    transform: scale(0.95);
-}
-
-.host-btn {
-    background: linear-gradient(135deg, #6e8efb, #a777e3);
-    color: white;
-}
-
-.player-btn {
-    background: linear-gradient(135deg, #00b09b, #96c93d);
-    color: white;
 }

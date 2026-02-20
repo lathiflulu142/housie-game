@@ -1,9 +1,57 @@
-// --- GENERATE RANDOM PLAYER TICKET ---
+// ==========================================
+// 🚨 PASTE THE EXACT SAME KEYS HERE 🚨
+// ==========================================
+ const firebaseConfig = {
+    apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
+    authDomain: "housieapp-3dc3e.firebaseapp.com",
+    projectId: "housieapp-3dc3e",
+    storageBucket: "housieapp-3dc3e.firebasestorage.app",
+    messagingSenderId: "709288045803",
+    appId: "1:709288045803:web:3639d923c9461192aae2ae",
+    measurementId: "G-YW7N4WMX3V"
+  };
+// ==========================================
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+let currentRoomRef = null; 
+
+// --- JOIN ROOM ---
+function joinRoom() {
+    const codeInput = document.getElementById('room-code-input').value;
+    
+    if (codeInput.length !== 4 || isNaN(codeInput)) {
+        alert("Please enter a valid 4-digit Room Code.");
+        return;
+    }
+
+    currentRoomRef = db.ref('rooms/' + codeInput);
+
+    // 1. Listen for new numbers
+    currentRoomRef.child('latestNumber').on('value', (snapshot) => {
+        const num = snapshot.val();
+        if (num) document.getElementById('latest-called-num').innerText = num;
+    });
+
+    // 2. Listen for resets
+    currentRoomRef.child('resetTrigger').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) generatePlayerTicket(); // Make new ticket if host resets
+    });
+
+    // 3. Update UI
+    document.getElementById('join-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
+    document.getElementById('player-room-display').innerText = codeInput;
+
+    generatePlayerTicket();
+}
+
+// --- GENERATE TICKET ---
 function generatePlayerTicket() {
     const ticketDiv = document.getElementById('player-ticket');
     ticketDiv.innerHTML = ''; 
     
-    // The library of valid layout patterns
     const ticketLayouts = [
         [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 1, 0, 1], [1, 1, 0, 0, 1, 0, 0, 1, 1] ],
         [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 0, 0, 1, 0, 1, 0, 1, 1], [1, 1, 1, 0, 0, 0, 1, 1, 0] ],
@@ -12,59 +60,34 @@ function generatePlayerTicket() {
         [ [0, 1, 1, 0, 1, 0, 1, 1, 0], [1, 0, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 1, 1, 0, 1, 0, 0] ]
     ];
 
-    const randomLayoutIndex = Math.floor(Math.random() * ticketLayouts.length);
-    const ticketPattern = ticketLayouts[randomLayoutIndex];
-
-    const colRanges = [
-        [1, 9], [10, 19], [20, 29], [30, 39], [40, 49], 
-        [50, 59], [60, 69], [70, 79], [80, 90]
-    ];
-
+    const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
+    const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
     let ticketNumbers = [[], [], []];
 
-    // Distribute random numbers into the columns
     for (let col = 0; col < 9; col++) {
-        let numbersNeeded = 0;
-        if (ticketPattern[0][col] === 1) numbersNeeded++;
-        if (ticketPattern[1][col] === 1) numbersNeeded++;
-        if (ticketPattern[2][col] === 1) numbersNeeded++;
-
-        let min = colRanges[col][0];
-        let max = colRanges[col][1];
+        let numbersNeeded = (ticketPattern[0][col] + ticketPattern[1][col] + ticketPattern[2][col]);
         let possibleNumbers = [];
-        for (let i = min; i <= max; i++) possibleNumbers.push(i);
+        for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
 
         let selectedForCol = [];
         for (let n = 0; n < numbersNeeded; n++) {
-            let randomIndex = Math.floor(Math.random() * possibleNumbers.length);
-            selectedForCol.push(possibleNumbers.splice(randomIndex, 1)[0]);
+            selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
         }
         selectedForCol.sort((a, b) => a - b); 
 
         let numIndex = 0;
         for (let row = 0; row < 3; row++) {
-            if (ticketPattern[row][col] === 1) {
-                ticketNumbers[row][col] = selectedForCol[numIndex];
-                numIndex++;
-            } else {
-                ticketNumbers[row][col] = null; 
-            }
+            ticketNumbers[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
         }
     }
 
-    // Draw the ticket on the screen
     for (let row = 0; row < 3; row++) {
         for (let col = 0; col < 9; col++) {
             const cell = document.createElement('div');
             cell.classList.add('cell');
-            let num = ticketNumbers[row][col];
-            
-            if (num !== null) {
-                cell.innerText = num;
-                // Add touch event for marking
-                cell.addEventListener('pointerdown', function() {
-                    this.classList.toggle('marked');
-                });
+            if (ticketNumbers[row][col] !== null) {
+                cell.innerText = ticketNumbers[row][col];
+                cell.addEventListener('pointerdown', function() { this.classList.toggle('marked'); });
             } else {
                 cell.classList.add('empty');
             }
@@ -73,38 +96,10 @@ function generatePlayerTicket() {
     }
 }
 
-// --- BUTTON LOGIC ---
 function getNewTicket() {
-    if (confirm("Are you sure you want to clear your current ticket and get a new one?")) {
-        generatePlayerTicket();
-    }
+    if (confirm("Clear ticket and get a new one?")) generatePlayerTicket();
 }
 
 function claimPrize(prizeName) {
-    // Pop up an alert for the player
-    alert(`You are claiming: ${prizeName}!\n\nYell it out to the host so they can verify your numbers on the main board!`);
-}
-// --- JOIN ROOM LOGIC ---
-// --- JOIN ROOM LOGIC ---
-function joinRoom() {
-    // Get what the user typed (no need for uppercase anymore)
-    const codeInput = document.getElementById('room-code-input').value;
-    
-    // Check if they typed exactly 4 characters AND that they are numbers
-    if (codeInput.length !== 4 || isNaN(codeInput)) {
-        alert("Please enter a valid 4-digit Room Code.");
-        return;
-    }
-
-    // 1. Hide the Join Screen
-    document.getElementById('join-screen').style.display = 'none';
-    
-    // 2. Show the Game Screen
-    document.getElementById('game-screen').style.display = 'block';
-    
-    // 3. Update the badge at the top
-    document.getElementById('player-room-display').innerText = codeInput;
-
-    // 4. Generate their ticket
-    generatePlayerTicket();
+    alert(`You are claiming: ${prizeName}!\nYell it out!`);
 }

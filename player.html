@@ -7,11 +7,10 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <div id="join-screen" class="join-container">
         <div class="join-box">
             <h1>🎟️ Join Game</h1>
-            <p>Ask the host for the 4-letter Room Code!</p>
+            <p>Ask the host for the 4-digit Room Code!</p>
             <input type="text" id="room-code-input" inputmode="numeric" pattern="[0-9]*" placeholder="1234" maxlength="4" autocomplete="off">
             <button id="join-btn" onclick="joinRoom()">Enter Game</button>
         </div>
@@ -29,6 +28,10 @@
         </header>
 
         <main>
+            <div style="text-align: center; margin-bottom: 15px;">
+                <h3 style="color: #6e8efb;">Host Called: <span id="latest-called-num" style="font-size: 26px; color: #ff0844; font-weight: 900;">Waiting...</span></h3>
+            </div>
+
             <div class="ticket-container">
                 <h2>My Ticket</h2>
                 <p>Tap a number when the host calls it!</p>
@@ -45,6 +48,8 @@
         </main>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="player.js"></script>
 </body>
 </html>
