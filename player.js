@@ -1,23 +1,20 @@
+// --- FIREBASE CONFIGURATION ---
 const firebaseConfig = {
-  apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
-  authDomain: "housieapp-3dc3e.firebaseapp.com",
-  databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
-  projectId: "housieapp-3dc3e",
-  storageBucket: "housieapp-3dc3e.firebasestorage.app",
-  messagingSenderId: "709288045803",
-  appId: "1:709288045803:web:3639d923c9461192aae2ae",
-  measurementId: "G-YW7N4WMX3V"
+    apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
+    authDomain: "housieapp-3dc3e.firebaseapp.com",
+    databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
+    projectId: "housieapp-3dc3e",
+    storageBucket: "housieapp-3dc3e.firebasestorage.app",
+    messagingSenderId: "709288045803",
+    appId: "1:709288045803:web:3639d923c9461192aae2ae",
+    measurementId: "G-YW7N4WMX3V"
 };
 
-
-
-// The rest of the game code starts down here...
-
-// The rest of the game code starts down here...
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 let currentRoomRef = null; 
 
+// --- JOIN ROOM LOGIC ---
 function joinRoom() {
     const codeInput = document.getElementById('room-code-input').value;
     
@@ -29,7 +26,7 @@ function joinRoom() {
     currentRoomRef = db.ref('rooms/' + codeInput);
 
     // Player Counting Magic
-    const playerId = "player_" + Date.now();
+    const playerId = "player_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
     const myPlayerRef = currentRoomRef.child('players/' + playerId);
     myPlayerRef.set(true); 
     myPlayerRef.onDisconnect().remove(); 
@@ -62,6 +59,7 @@ function joinRoom() {
     generatePlayerTicket();
 }
 
+// --- TICKET GENERATOR ---
 function generatePlayerTicket() {
     const ticketDiv = document.getElementById('player-ticket');
     if (!ticketDiv) return;
@@ -110,10 +108,12 @@ function generatePlayerTicket() {
     }
 }
 
+// --- CLAIM PRIZE ---
 function claimPrize(prizeName) {
     alert(`You are claiming: ${prizeName}!\nYell it out!`);
 }
 
+// --- POPUP BOARD LOGIC ---
 function setupFullBoard() {
     const fullBoard = document.getElementById('full-board');
     if (!fullBoard) return;
