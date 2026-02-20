@@ -1,59 +1,52 @@
 // ==========================================
 // 🚨 PASTE YOUR FIREBASE KEYS HERE 🚨
 // ==========================================
- const firebaseConfig = {
-    apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
-    authDomain: "housieapp-3dc3e.firebaseapp.com",
-    projectId: "housieapp-3dc3e",
-    storageBucket: "housieapp-3dc3e.firebasestorage.app",
-    messagingSenderId: "709288045803",
-    databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
-    appId: "1:709288045803:web:3639d923c9461192aae2ae",
-    measurementId: "G-YW7N4WMX3V"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
+  authDomain: "housieapp-3dc3e.firebaseapp.com",
+  projectId: "housieapp-3dc3e",
+  storageBucket: "housieapp-3dc3e.firebasestorage.app",
+  messagingSenderId: "709288045803",
+  databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
+  appId: "1:709288045803:web:3639d923c9461192aae2ae",
+  measurementId: "G-YW7N4WMX3V"
+};
 // ==========================================
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// --- STATE & ROOM SETUP ---
 let numberBag = Array.from({length: 90}, (_, i) => i + 1); 
 const currentNumberDisplay = document.getElementById('current-number');
 
+// Generate Room Code
 function generateRoomCode() {
     const numbers = '0123456789';
     let code = '';
-    for (let i = 0; i < 4; i++) {
-        code += numbers.charAt(Math.floor(Math.random() * numbers.length));
-    }
+    for (let i = 0; i < 4; i++) code += numbers.charAt(Math.floor(Math.random() * numbers.length));
     return code;
 }
 
 const myRoomCode = generateRoomCode();
 document.getElementById('room-code-display').innerText = myRoomCode;
 
-// OLD CODE TO REPLACE:
-// roomRef.set({
-//     latestNumber: "Ready",
-//     resetTrigger: Date.now()
-// });
-
-// NEW CODE:
-// Only update the game state, do NOT wipe out the players folder!
+// Firebase Room Setup
+const roomRef = db.ref('rooms/' + myRoomCode);
 roomRef.child('latestNumber').set("Ready");
 roomRef.child('resetTrigger').set(Date.now());
 
-// Listen for how many players are in the room!
+// Live Player Counter
 roomRef.child('players').on('value', (snapshot) => {
     const players = snapshot.val();
-    // If there are players, count them. Otherwise, it's 0.
     const count = players ? Object.keys(players).length : 0;
-    document.getElementById('player-count-display').innerText = count;
+    const countDisplay = document.getElementById('player-count-display');
+    if (countDisplay) countDisplay.innerText = count;
 });
 
-// --- BOARD & TICKET SETUP ---
+// Board & Ticket Logic
 function setupFullBoard() {
     const fullBoard = document.getElementById('full-board');
+    if (!fullBoard) return;
     fullBoard.innerHTML = ''; 
     for (let i = 1; i <= 90; i++) {
         const cell = document.createElement('div');
@@ -66,14 +59,14 @@ function setupFullBoard() {
 
 function generateHostTicket() {
     const ticketDiv = document.getElementById('host-ticket');
+    if (!ticketDiv) return;
     ticketDiv.innerHTML = ''; 
     
     const ticketLayouts = [
         [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 1, 0, 1], [1, 1, 0, 0, 1, 0, 0, 1, 1] ],
         [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 0, 0, 1, 0, 1, 0, 1, 1], [1, 1, 1, 0, 0, 0, 1, 1, 0] ],
         [ [1, 1, 0, 1, 0, 1, 0, 0, 1], [1, 0, 1, 0, 1, 0, 1, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ],
-        [ [1, 0, 0, 1, 1, 1, 0, 1, 0], [0, 1, 1, 0, 0, 1, 1, 0, 1], [1, 1, 0, 1, 1, 0, 0, 1, 0] ],
-        [ [0, 1, 1, 0, 1, 0, 1, 1, 0], [1, 0, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 1, 1, 0, 1, 0, 0] ]
+        [ [1, 0, 0, 1, 1, 1, 0, 1, 0], [0, 1, 1, 0, 0, 1, 1, 0, 1], [1, 1, 0, 1, 1, 0, 0, 1, 0] ]
     ];
 
     const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
@@ -112,7 +105,7 @@ function generateHostTicket() {
     }
 }
 
-// --- ACTIONS ---
+// Actions
 function drawNumber() {
     if (numberBag.length === 0) return;
     const drawnNum = numberBag.splice(Math.floor(Math.random() * numberBag.length), 1)[0];
@@ -123,7 +116,6 @@ function drawNumber() {
     const boardCell = document.getElementById(`board-num-${drawnNum}`);
     if (boardCell) boardCell.classList.add('called');
 
-    // Send to Firebase
     roomRef.child('latestNumber').set(drawnNum);
 }
 
@@ -135,12 +127,11 @@ function resetGame() {
     document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called'));
     generateHostTicket();
 
-    // Send reset signal to Firebase
     roomRef.child('resetTrigger').set(Date.now());
     roomRef.child('latestNumber').set("Ready");
 }
 
-// --- MODAL ---
+// Modals
 const modal = document.getElementById('board-modal');
 function openModal() { modal.style.display = "flex"; }
 function closeModal() { modal.style.display = "none"; }

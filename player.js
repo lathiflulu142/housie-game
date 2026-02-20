@@ -6,8 +6,8 @@ const firebaseConfig = {
   authDomain: "housieapp-3dc3e.firebaseapp.com",
   projectId: "housieapp-3dc3e",
   storageBucket: "housieapp-3dc3e.firebasestorage.app",
-  databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
   messagingSenderId: "709288045803",
+  databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
   appId: "1:709288045803:web:3639d923c9461192aae2ae",
   measurementId: "G-YW7N4WMX3V"
 };
@@ -17,11 +17,9 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 let currentRoomRef = null; 
 
-// --- JOIN ROOM LOGIC ---
 function joinRoom() {
     const codeInput = document.getElementById('room-code-input').value;
     
-    // Make sure they typed exactly 4 numbers
     if (codeInput.length !== 4 || isNaN(codeInput)) {
         alert("Please enter a valid 4-digit Room Code.");
         return;
@@ -29,57 +27,50 @@ function joinRoom() {
 
     currentRoomRef = db.ref('rooms/' + codeInput);
 
-    // --- PLAYER COUNTING ---
-    const playerId = "player_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+    // Player Counting Magic
+    const playerId = "player_" + Date.now();
     const myPlayerRef = currentRoomRef.child('players/' + playerId);
-    myPlayerRef.set(true); // Check in
-    myPlayerRef.onDisconnect().remove(); // Check out automatically
+    myPlayerRef.set(true); 
+    myPlayerRef.onDisconnect().remove(); 
 
-    // --- LISTEN FOR DRAWN NUMBERS ---
+    // Listen for Numbers
     currentRoomRef.child('latestNumber').on('value', (snapshot) => {
         const num = snapshot.val();
         if (num && num !== "Ready") {
-            // Update the text
             document.getElementById('latest-called-num').innerText = num;
-            
-            // Highlight it on the popup board
             const boardCell = document.getElementById(`board-num-${num}`);
             if (boardCell) boardCell.classList.add('called');
         }
     });
 
-    // --- LISTEN FOR HOST RESETS ---
+    // Listen for Resets
     currentRoomRef.child('resetTrigger').on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
-            generatePlayerTicket(); // Give them a fresh ticket
+            generatePlayerTicket(); 
             document.getElementById('latest-called-num').innerText = "Waiting...";
-            // Clear the popup board
             document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called'));
         }
     });
 
-    // --- SWITCH SCREENS ---
+    // Switch Screens
     document.getElementById('join-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'block';
     document.getElementById('player-room-display').innerText = codeInput;
 
-    // Finally, draw the ticket!
     generatePlayerTicket();
 }
 
-
-// --- TICKET GENERATOR ---
 function generatePlayerTicket() {
     const ticketDiv = document.getElementById('player-ticket');
+    if (!ticketDiv) return;
     ticketDiv.innerHTML = ''; 
     
     const ticketLayouts = [
         [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 1, 0, 1], [1, 1, 0, 0, 1, 0, 0, 1, 1] ],
         [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 0, 0, 1, 0, 1, 0, 1, 1], [1, 1, 1, 0, 0, 0, 1, 1, 0] ],
         [ [1, 1, 0, 1, 0, 1, 0, 0, 1], [1, 0, 1, 0, 1, 0, 1, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ],
-        [ [1, 0, 0, 1, 1, 1, 0, 1, 0], [0, 1, 1, 0, 0, 1, 1, 0, 1], [1, 1, 0, 1, 1, 0, 0, 1, 0] ],
-        [ [0, 1, 1, 0, 1, 0, 1, 1, 0], [1, 0, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 1, 1, 0, 1, 0, 0] ]
+        [ [1, 0, 0, 1, 1, 1, 0, 1, 0], [0, 1, 1, 0, 0, 1, 1, 0, 1], [1, 1, 0, 1, 1, 0, 0, 1, 0] ]
     ];
 
     const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
@@ -118,12 +109,10 @@ function generatePlayerTicket() {
     }
 }
 
-// --- CLAIM PRIZE ---
 function claimPrize(prizeName) {
-    alert(`You are claiming: ${prizeName}!\nYell it out so the host can verify!`);
+    alert(`You are claiming: ${prizeName}!\nYell it out!`);
 }
 
-// --- FULL BOARD & MODAL LOGIC ---
 function setupFullBoard() {
     const fullBoard = document.getElementById('full-board');
     if (!fullBoard) return;
@@ -142,5 +131,4 @@ function openModal() { modal.style.display = "flex"; }
 function closeModal() { modal.style.display = "none"; }
 window.onclick = function(event) { if (event.target == modal) closeModal(); }
 
-// Build the board immediately so it is ready when they click the button
 setupFullBoard();
