@@ -214,3 +214,25 @@ header h1 { font-size: 22px; color: #2c3e50; }
     font-weight: bold; font-size: 12px;
 }
 .kick-btn:active { transform: scale(0.9); }
+/* --- NEW: LEADERBOARD & SHARE BUTTON --- */
+.leaderboard { 
+    background: #fff3cd; border: 2px solid #ffeeba; 
+    border-radius: 10px; padding: 15px; margin: 15px auto; 
+    width: 95%; max-width: 600px; text-align: left; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+}
+.leaderboard h3 { 
+    margin-bottom: 5px; color: #856404; font-size: 18px; 
+    border-bottom: 2px solid #ffeeba; padding-bottom: 5px; 
+}
+.leaderboard ul { list-style: none; padding: 0; margin: 0; font-size: 15px; color: #856404; }
+.leaderboard li { padding: 6px 0; font-weight: bold; display: flex; justify-content: space-between; }
+.winner-name { color: #d35400; }
+
+.share-btn { 
+    background: #25D366; color: white; border: none; 
+    padding: 8px 12px; border-radius: 8px; font-weight: bold; 
+    font-size: 12px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+    margin-left: 5px;
+}
+.share-btn:active { transform: scale(0.95); }

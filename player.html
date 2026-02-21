@@ -33,6 +33,11 @@
                 <h3 style="color: #6e8efb;">Host Called: <span id="latest-called-num" style="font-size: 26px; color: #ff0844; font-weight: 900;">Waiting...</span></h3>
             </div>
 
+            <div class="leaderboard" id="leaderboard-box" style="display: none;">
+                <h3>🏆 Live Winners</h3>
+                <ul id="winners-list"></ul>
+            </div>
+
             <div class="ticket-container">
                 <h2>My Ticket</h2>
                 <div id="player-ticket" class="ticket-grid"></div>
@@ -56,6 +61,9 @@
         </div>
     </div>
 
+    <audio id="sound-pop" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg" preload="auto"></audio>
+    <audio id="sound-win" src="https://actions.google.com/sounds/v1/crowds/party_horn.ogg" preload="auto"></audio>
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -64,15 +72,15 @@
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
         const firebaseConfig = {
-    apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
-    authDomain: "housieapp-3dc3e.firebaseapp.com",
-    databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
-    projectId: "housieapp-3dc3e",
-    storageBucket: "housieapp-3dc3e.firebasestorage.app",
-    messagingSenderId: "709288045803",
-    appId: "1:709288045803:web:6505478d4588fec2aae2ae",
-    measurementId: "G-6SBEGQB7BE"
-  };
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID",
+            measurementId: "YOUR_MEASUREMENT_ID"
+        };
         // ==========================================
 
         firebase.initializeApp(firebaseConfig);
@@ -92,30 +100,26 @@
             myPlayerId = "player_" + Date.now();
             const myPlayerRef = currentRoomRef.child('players/' + myPlayerId);
 
-            // Add player with their Name!
             myPlayerRef.set({ name: myPlayerName }); 
             myPlayerRef.onDisconnect().remove(); 
 
-            // --- NEW: KICK DETECTOR ---
             myPlayerRef.on('value', (snapshot) => {
-                // If your database node disappears, you were kicked!
                 if (snapshot.val() === null && document.getElementById('game-screen').style.display === 'block') {
                     alert("The host has removed you from the room.");
                     window.location.reload(); 
                 }
             });
 
-            // Listen for Numbers
             currentRoomRef.child('latestNumber').on('value', (snapshot) => {
                 const num = snapshot.val();
                 if (num && num !== "Ready") {
                     document.getElementById('latest-called-num').innerText = num;
                     const boardCell = document.getElementById(`board-num-${num}`);
                     if (boardCell) boardCell.classList.add('called');
+                    document.getElementById('sound-pop').play().catch(()=>{}); // Play Draw Sound
                 }
             });
 
-            // Listen for Resets
             currentRoomRef.child('resetTrigger').on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
@@ -125,27 +129,35 @@
                 }
             });
 
-            // --- NEW: PRIZE NOTIFICATIONS & BUTTON HIDING ---
             let knownClaims = {};
             currentRoomRef.child('claims').on('value', (snapshot) => {
                 const claims = snapshot.val() || {};
+                const leaderboard = document.getElementById('winners-list');
+                const leaderboardBox = document.getElementById('leaderboard-box');
                 
-                // 1. Hide buttons if someone already claimed it
+                leaderboard.innerHTML = '';
+                let hasWinners = false;
+                
                 const prizeList = ['jaldi', 'top', 'mid', 'bot', 'full'];
                 prizeList.forEach(id => {
                     const btn = document.getElementById('btn-' + id);
                     if (btn) btn.style.display = claims[id] ? 'none' : 'inline-block';
                 });
 
-                // 2. Alert everyone who won
                 for(let prizeId in claims) {
+                    hasWinners = true;
                     if(!knownClaims[prizeId]) {
-                        alert(`🎉 ${claims[prizeId].winner} just claimed ${claims[prizeId].prizeName}! 🎉`);
+                        document.getElementById('sound-win').play().catch(()=>{}); // Play Win Sound
                         knownClaims[prizeId] = true;
                     }
+                    // Populate Leaderboard
+                    let li = document.createElement('li');
+                    li.innerHTML = `<span>🎊 ${claims[prizeId].prizeName}</span> <span class="winner-name">${claims[prizeId].winner}</span>`;
+                    leaderboard.appendChild(li);
                 }
                 
-                // 3. Reset local memory if Host resets game
+                leaderboardBox.style.display = hasWinners ? "block" : "none";
+                
                 for(let prizeId in knownClaims) {
                     if(!claims[prizeId]) delete knownClaims[prizeId];
                 }
@@ -158,27 +170,35 @@
             generatePlayerTicket();
         }
 
-        // --- NEW: CLAIMING A PRIZE ---
+        // --- SMART ANTI-CHEAT VALIDATOR ---
         function claimPrize(prizeId, prizeName) {
-            if (confirm(`Are you sure you want to claim ${prizeName}?`)) {
-                // Save it to Firebase so everyone sees!
-                currentRoomRef.child('claims/' + prizeId).set({
-                    winner: myPlayerName,
-                    prizeName: prizeName
-                });
+            let isValid = false;
+            const markedCells = document.querySelectorAll('.cell.marked');
+            
+            if(prizeId === 'jaldi') isValid = markedCells.length >= 5;
+            if(prizeId === 'top') isValid = document.querySelectorAll('.cell.row-0.marked').length === 5;
+            if(prizeId === 'mid') isValid = document.querySelectorAll('.cell.row-1.marked').length === 5;
+            if(prizeId === 'bot') isValid = document.querySelectorAll('.cell.row-2.marked').length === 5;
+            if(prizeId === 'full') isValid = markedCells.length === 15;
+
+            if(!isValid) {
+                alert(`❌ You haven't completed the ${prizeName} yet! Keep playing!`);
+                return;
+            }
+
+            if (confirm(`Claim ${prizeName}?`)) {
+                currentRoomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName });
             }
         }
 
-        // --- TICKET GENERATOR ---
         function generatePlayerTicket() {
             const ticketDiv = document.getElementById('player-ticket');
             if (!ticketDiv) return;
             ticketDiv.innerHTML = ''; 
             
             const ticketLayouts = [
-                [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 1, 0, 1], [1, 1, 0, 0, 1, 0, 0, 1, 1] ],
-                [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 0, 0, 1, 0, 1, 0, 1, 1], [1, 1, 1, 0, 0, 0, 1, 1, 0] ],
-                [ [1, 1, 0, 1, 0, 1, 0, 0, 1], [1, 0, 1, 0, 1, 0, 1, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ]
+                [ [1, 0, 1, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1, 0, 1] ],
+                [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 0, 1, 1] ]
             ];
 
             const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
@@ -189,11 +209,9 @@
                 let numbersNeeded = (ticketPattern[0][col] + ticketPattern[1][col] + ticketPattern[2][col]);
                 let possibleNumbers = [];
                 for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
-
                 let selectedForCol = [];
                 for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
                 selectedForCol.sort((a, b) => a - b); 
-
                 let numIndex = 0;
                 for (let row = 0; row < 3; row++) ticketNumbers[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
             }
@@ -202,9 +220,19 @@
                 for (let col = 0; col < 9; col++) {
                     const cell = document.createElement('div');
                     cell.classList.add('cell');
+                    // Add Row Class for Anti-Cheat!
+                    cell.classList.add(`row-${row}`);
+                    
                     if (ticketNumbers[row][col] !== null) {
                         cell.innerText = ticketNumbers[row][col];
-                        cell.addEventListener('pointerdown', function() { this.classList.toggle('marked'); });
+                        cell.addEventListener('pointerdown', function() { 
+                            // ANTI-CHEAT: Only mark if actually called!
+                            if(document.getElementById(`board-num-${this.innerText}`).classList.contains('called')) {
+                                this.classList.toggle('marked'); 
+                            } else {
+                                alert(`Number ${this.innerText} hasn't been called yet!`);
+                            }
+                        });
                     } else {
                         cell.classList.add('empty');
                     }
