@@ -6,13 +6,12 @@
     <title>Housie - Player</title>
     <link rel="stylesheet" href="style.css">
     <style>
-        /* Extra style for the new ticket dropdown */
         #ticket-count-input {
             width: 80%; padding: 15px; font-size: 18px; font-weight: bold;
             text-align: center; border: 2px solid #ccc; border-radius: 10px;
             margin-bottom: 15px; background: white; color: #2c3e50; cursor: pointer;
         }
-        .ticket-grid { margin-bottom: 15px; border: 2px solid #a777e3; } /* Separate multiple tickets */
+        .ticket-grid { margin-bottom: 15px; border: 2px solid #a777e3; } 
     </style>
 </head>
 <body>
@@ -87,7 +86,7 @@
         // ==========================================
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
-         const firebaseConfig = {
+          const firebaseConfig = {
     apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
     authDomain: "housieapp-3dc3e.firebaseapp.com",
     databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
@@ -103,7 +102,6 @@
         const db = firebase.database();
         let currentRoomRef = null; 
 
-        // Auto-Wipe Old Memory format to prevent crashes
         let playerState = JSON.parse(localStorage.getItem('housie_player'));
         if (playerState && playerState.myTicketNumbers && !Array.isArray(playerState.myTicketNumbers[0][0])) {
             localStorage.removeItem('housie_player');
@@ -123,22 +121,32 @@
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const roomFromUrl = urlParams.get('room');
-            if(roomFromUrl) document.getElementById('room-code-input').value = roomFromUrl;
 
-            if(playerState && playerState.myRoomCode && !roomFromUrl) {
-                document.getElementById('room-code-input').value = playerState.myRoomCode;
-                document.getElementById('player-name-input').value = playerState.myPlayerName;
-                document.getElementById('ticket-count-input').value = playerState.ticketCount || 1;
-                
-                myRoomCode = playerState.myRoomCode;
-                myPlayerName = playerState.myPlayerName;
-                myPlayerId = playerState.myPlayerId;
-                myTicketNumbers = playerState.myTicketNumbers;
-                myMarkedNumbers = playerState.myMarkedNumbers || [];
-                ticketCount = playerState.ticketCount || 1;
-                
-                // Only auto-join if they actually have active tickets stored
-                if (myTicketNumbers) joinRoom(true); 
+            // --- FIXED: PERFECT MEMORY RECOVERY EVEN WITH URL LINKS ---
+            if(playerState && playerState.myRoomCode) {
+                // Only load memory if the URL room matches the saved room, or if there is no URL room
+                if (!roomFromUrl || roomFromUrl === playerState.myRoomCode) {
+                    document.getElementById('room-code-input').value = playerState.myRoomCode;
+                    document.getElementById('player-name-input').value = playerState.myPlayerName;
+                    document.getElementById('ticket-count-input').value = playerState.ticketCount || 1;
+                    
+                    myRoomCode = playerState.myRoomCode;
+                    myPlayerName = playerState.myPlayerName;
+                    myPlayerId = playerState.myPlayerId;
+                    myTicketNumbers = playerState.myTicketNumbers;
+                    myMarkedNumbers = playerState.myMarkedNumbers || [];
+                    ticketCount = playerState.ticketCount || 1;
+                    
+                    if (myTicketNumbers) {
+                        joinRoom(true); 
+                        return; // Stop here! Don't run the rest of the code!
+                    }
+                }
+            }
+
+            // If memory is blank, just fill in the code from the QR scan
+            if(roomFromUrl) {
+                document.getElementById('room-code-input').value = roomFromUrl;
             }
         };
 
@@ -155,6 +163,9 @@
                 myTicketNumbers = null; 
                 myMarkedNumbers = [];
                 lastResetTime = Date.now();
+                
+                // Clear the URL so refreshes don't get confused
+                window.history.replaceState({}, document.title, window.location.pathname);
                 savePlayer();
             }
 
@@ -189,7 +200,6 @@
                 }
             });
 
-            // --- SMART RESET FOR NEXT ROUND ---
             currentRoomRef.child('resetTrigger').on('value', (snapshot) => {
                 const triggerTime = snapshot.val();
                 if (triggerTime && triggerTime > lastResetTime) {
@@ -198,7 +208,6 @@
                     myMarkedNumbers = [];
                     savePlayer();
                     
-                    // Boot them to the menu so they can change their ticket count!
                     document.getElementById('game-screen').style.display = 'none';
                     document.getElementById('join-screen').style.display = 'flex';
                     alert("The Host has started a New Round! Choose your ticket count and jump back in.");
@@ -241,11 +250,9 @@
             generatePlayerTicket();
         }
 
-        // --- SMART MULTI-TICKET ANTI-CHEAT ---
         function claimPrize(prizeId, prizeName) {
             let isValid = false;
             
-            // Check each ticket individually to see if ONE of them won!
             for (let t = 0; t < myTicketNumbers.length; t++) {
                 const ticketDiv = document.getElementById(`ticket-grid-${t}`);
                 const markedCells = ticketDiv.querySelectorAll('.cell.marked');
@@ -256,7 +263,7 @@
                 if(prizeId === 'bot' && ticketDiv.querySelectorAll('.cell.row-2.marked').length === 5) isValid = true;
                 if(prizeId === 'full' && markedCells.length === 15) isValid = true;
 
-                if (isValid) break; // If one ticket wins, they win!
+                if (isValid) break; 
             }
 
             if(!isValid) { alert(`❌ You haven't completed ${prizeName} on any ticket yet!`); return; }
@@ -265,13 +272,11 @@
             }
         }
 
-        // --- MULTI-TICKET GENERATOR ---
         function generatePlayerTicket() {
             const container = document.getElementById('player-ticket-container');
             if (!container) return;
             container.innerHTML = ''; 
             
-            // Generate New Tickets
             if (!myTicketNumbers) {
                 myTicketNumbers = [];
                 const ticketLayouts = [
@@ -303,12 +308,11 @@
                             singleTicket[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
                         }
                     }
-                    myTicketNumbers.push(singleTicket); // Save ticket to array
+                    myTicketNumbers.push(singleTicket); 
                 }
                 savePlayer();
             }
 
-            // Render All Tickets
             for (let t = 0; t < myTicketNumbers.length; t++) {
                 const ticketDiv = document.createElement('div');
                 ticketDiv.className = 'ticket-grid';
@@ -325,20 +329,29 @@
 
                         if (cellVal !== null) {
                             cell.innerText = cellVal;
-                            // Check Global Marks (so if a number is marked, it applies across tickets)
                             if (myMarkedNumbers.includes(cellVal)) cell.classList.add('marked');
 
                             cell.addEventListener('pointerdown', function() { 
-                                if(document.getElementById(`board-num-${this.innerText}`).classList.contains('called')) {
-                                    this.classList.toggle('marked'); 
-                                    if(this.classList.contains('marked')) {
-                                        if(!myMarkedNumbers.includes(cellVal)) myMarkedNumbers.push(cellVal);
-                                    } else {
+                                if(document.getElementById(`board-num-${cellVal}`).classList.contains('called')) {
+                                    
+                                    // --- FIXED: MAGIC SYNC FOR MULTIPLE TICKETS ---
+                                    if(myMarkedNumbers.includes(cellVal)) {
                                         myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal);
+                                    } else {
+                                        myMarkedNumbers.push(cellVal);
                                     }
                                     savePlayer();
+
+                                    // Instantly update EVERY matching number across ALL tickets visually
+                                    document.querySelectorAll('.cell').forEach(c => {
+                                        if(parseInt(c.innerText) === cellVal) {
+                                            if(myMarkedNumbers.includes(cellVal)) c.classList.add('marked');
+                                            else c.classList.remove('marked');
+                                        }
+                                    });
+                                    
                                 } else {
-                                    alert(`Number ${this.innerText} hasn't been called yet!`);
+                                    alert(`Number ${cellVal} hasn't been called yet!`);
                                 }
                             });
                         } else {
