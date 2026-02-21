@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Housie - Host</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .ticket-grid { margin-bottom: 15px; border: 2px solid #a777e3; }
+        .host-ticket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        #ticket-count-input {
+            padding: 8px; font-weight: bold; border-radius: 8px; 
+            border: 2px solid #ccc; background: white; color: #2c3e50; cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -32,8 +40,15 @@
         </div>
 
         <div class="ticket-container">
-            <h2>My Ticket</h2>
-            <div id="host-ticket" class="ticket-grid"></div>
+            <div class="host-ticket-header">
+                <h2>My Tickets</h2>
+                <select id="ticket-count-input" onchange="changeHostTickets()">
+                    <option value="1">1 Ticket</option>
+                    <option value="2">2 Tickets</option>
+                    <option value="3">3 Tickets</option>
+                </select>
+            </div>
+            <div id="host-ticket-container"></div>
         </div>
 
         <div class="claims-container" id="claims-box">
@@ -93,7 +108,7 @@
         // ==========================================
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
-        const firebaseConfig = {
+         const firebaseConfig = {
     apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
     authDomain: "housieapp-3dc3e.firebaseapp.com",
     databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
@@ -110,7 +125,12 @@
         const myPlayerName = "Host 🎤";
         const currentNumberDisplay = document.getElementById('current-number');
 
+        // Clean up old memory structure if needed
         let hostState = JSON.parse(localStorage.getItem('housie_host'));
+        if (hostState && hostState.myTicketNumbers && !Array.isArray(hostState.myTicketNumbers[0][0])) {
+            localStorage.removeItem('housie_host');
+            hostState = null;
+        }
         
         function generateRoomCode() {
             let code = '';
@@ -123,14 +143,16 @@
         let myTicketNumbers = hostState ? hostState.myTicketNumbers : null;
         let myMarkedNumbers = hostState ? hostState.myMarkedNumbers : [];
         let currentDrawn = hostState ? hostState.currentDrawn : "Go!";
+        let ticketCount = hostState ? (hostState.ticketCount || 1) : 1;
 
         document.getElementById('room-code-display').innerText = myRoomCode;
+        document.getElementById('ticket-count-input').value = ticketCount;
         currentNumberDisplay.innerText = currentDrawn;
         if(currentDrawn !== "Go!") currentNumberDisplay.style.fontSize = "60px";
 
         function saveHost() {
             localStorage.setItem('housie_host', JSON.stringify({
-                myRoomCode, numberBag, myTicketNumbers, myMarkedNumbers, currentDrawn
+                myRoomCode, numberBag, myTicketNumbers, myMarkedNumbers, currentDrawn, ticketCount
             }));
         }
 
@@ -144,7 +166,19 @@
             saveHost();
         }
 
-        // --- NEW: MODAL LOGIC & QR CODE ---
+        // --- NEW: HOST TICKET CHANGER LOGIC ---
+        function changeHostTickets() {
+            if (currentDrawn !== "Go!") {
+                alert("You cannot change your ticket count after you start drawing numbers!");
+                document.getElementById('ticket-count-input').value = ticketCount;
+                return;
+            }
+            ticketCount = parseInt(document.getElementById('ticket-count-input').value);
+            myTicketNumbers = null; 
+            myMarkedNumbers = [];
+            generateHostTicket();
+        }
+
         const boardModal = document.getElementById('board-modal');
         const inviteModal = document.getElementById('invite-modal');
         const resetModal = document.getElementById('reset-modal');
@@ -155,7 +189,6 @@
         function closeResetModal() { resetModal.style.display = "none"; }
 
         function openInviteModal() {
-            // Generates a magic link with the room code attached!
             const magicLink = window.location.href.replace("host.html", "player.html") + "?room=" + myRoomCode;
             document.getElementById('invite-code-display').innerText = myRoomCode;
             document.getElementById('qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(magicLink)}`;
@@ -230,16 +263,24 @@
             for(let prizeId in knownClaims) { if(!claims[prizeId]) delete knownClaims[prizeId]; }
         });
 
+        // --- HOST MULTI-TICKET ANTI-CHEAT ---
         function claimPrize(prizeId, prizeName) {
             let isValid = false;
-            const markedCells = document.querySelectorAll('#host-ticket .cell.marked');
-            if(prizeId === 'jaldi') isValid = markedCells.length >= 5;
-            if(prizeId === 'top') isValid = document.querySelectorAll('#host-ticket .cell.row-0.marked').length === 5;
-            if(prizeId === 'mid') isValid = document.querySelectorAll('#host-ticket .cell.row-1.marked').length === 5;
-            if(prizeId === 'bot') isValid = document.querySelectorAll('#host-ticket .cell.row-2.marked').length === 5;
-            if(prizeId === 'full') isValid = markedCells.length === 15;
+            
+            for (let t = 0; t < myTicketNumbers.length; t++) {
+                const ticketDiv = document.getElementById(`ticket-grid-${t}`);
+                const markedCells = ticketDiv.querySelectorAll('.cell.marked');
+                
+                if(prizeId === 'jaldi' && markedCells.length >= 5) isValid = true;
+                if(prizeId === 'top' && ticketDiv.querySelectorAll('.cell.row-0.marked').length === 5) isValid = true;
+                if(prizeId === 'mid' && ticketDiv.querySelectorAll('.cell.row-1.marked').length === 5) isValid = true;
+                if(prizeId === 'bot' && ticketDiv.querySelectorAll('.cell.row-2.marked').length === 5) isValid = true;
+                if(prizeId === 'full' && markedCells.length === 15) isValid = true;
 
-            if(!isValid) { alert(`❌ You haven't completed ${prizeName} yet!`); return; }
+                if (isValid) break;
+            }
+
+            if(!isValid) { alert(`❌ You haven't completed ${prizeName} on any ticket yet!`); return; }
             if (confirm(`Claim ${prizeName} as the Host?`)) { roomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName }); }
         }
 
@@ -258,7 +299,6 @@
             saveHost();
         }
 
-        // --- NEW: THE TWO RESET OPTIONS ---
         function resetGame() {
             if (!confirm("Start next round with the same Room Code and players?")) return; 
             numberBag = Array.from({length: 90}, (_, i) => i + 1);
@@ -266,6 +306,7 @@
             myMarkedNumbers = [];
             currentDrawn = "Go!";
             currentNumberDisplay.innerText = "Go!";
+            ticketCount = parseInt(document.getElementById('ticket-count-input').value);
             
             document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called'));
             generateHostTicket();
@@ -279,9 +320,9 @@
 
         function destroyRoom() {
             if (!confirm("WARNING: This will kick all players, delete the room, and generate a new code. Proceed?")) return;
-            roomRef.remove(); // Deletes the entire room from Firebase!
-            localStorage.removeItem('housie_host'); // Wipe Host Memory
-            window.location.reload(); // Restarts the app with a brand new code
+            roomRef.remove(); 
+            localStorage.removeItem('housie_host'); 
+            window.location.reload(); 
         }
 
         function setupFullBoard() {
@@ -297,12 +338,14 @@
             }
         }
 
+        // --- HOST MULTI-TICKET GENERATOR ---
         function generateHostTicket() {
-            const ticketDiv = document.getElementById('host-ticket');
-            if (!ticketDiv) return;
-            ticketDiv.innerHTML = ''; 
+            const container = document.getElementById('host-ticket-container');
+            if (!container) return;
+            container.innerHTML = ''; 
 
             if (!myTicketNumbers) {
+                myTicketNumbers = [];
                 const ticketLayouts = [
                     [ [1, 0, 1, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1, 0, 1] ],
                     [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 0, 1, 1] ],
@@ -310,52 +353,65 @@
                     [ [0, 1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 1, 0, 1, 0, 1, 1, 0] ],
                     [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 1, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 1, 1, 0] ]
                 ];
-                const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
-                const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
-                myTicketNumbers = [[], [], []];
 
-                for (let col = 0; col < 9; col++) {
-                    let numbersNeeded = (ticketPattern[0][col] + ticketPattern[1][col] + ticketPattern[2][col]);
-                    let possibleNumbers = [];
-                    for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
-                    let selectedForCol = [];
-                    for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
-                    selectedForCol.sort((a, b) => a - b); 
-                    let numIndex = 0;
-                    for (let row = 0; row < 3; row++) myTicketNumbers[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
+                for (let t = 0; t < ticketCount; t++) {
+                    let singleTicket = [[], [], []];
+                    const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
+                    const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
+
+                    for (let col = 0; col < 9; col++) {
+                        let numbersNeeded = (ticketPattern[0][col] + ticketPattern[1][col] + ticketPattern[2][col]);
+                        let possibleNumbers = [];
+                        for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
+                        let selectedForCol = [];
+                        for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
+                        selectedForCol.sort((a, b) => a - b); 
+                        let numIndex = 0;
+                        for (let row = 0; row < 3; row++) singleTicket[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
+                    }
+                    myTicketNumbers.push(singleTicket);
                 }
                 saveHost();
             }
 
-            for (let row = 0; row < 3; row++) {
-                for (let col = 0; col < 9; col++) {
-                    const cell = document.createElement('div');
-                    cell.classList.add('cell');
-                    cell.classList.add(`row-${row}`);
-                    let cellVal = myTicketNumbers[row][col];
+            for (let t = 0; t < myTicketNumbers.length; t++) {
+                const ticketDiv = document.createElement('div');
+                ticketDiv.className = 'ticket-grid';
+                ticketDiv.id = `ticket-grid-${t}`;
+                
+                let ticketData = myTicketNumbers[t];
 
-                    if (cellVal !== null) {
-                        cell.innerText = cellVal;
-                        if (myMarkedNumbers.includes(cellVal)) cell.classList.add('marked');
+                for (let row = 0; row < 3; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        cell.classList.add(`row-${row}`);
+                        let cellVal = ticketData[row][col];
 
-                        cell.addEventListener('pointerdown', function() { 
-                            if(document.getElementById(`board-num-${this.innerText}`).classList.contains('called')) {
-                                this.classList.toggle('marked'); 
-                                if(this.classList.contains('marked')) {
-                                    myMarkedNumbers.push(cellVal);
+                        if (cellVal !== null) {
+                            cell.innerText = cellVal;
+                            if (myMarkedNumbers.includes(cellVal)) cell.classList.add('marked');
+
+                            cell.addEventListener('pointerdown', function() { 
+                                if(document.getElementById(`board-num-${this.innerText}`).classList.contains('called')) {
+                                    this.classList.toggle('marked'); 
+                                    if(this.classList.contains('marked')) {
+                                        if(!myMarkedNumbers.includes(cellVal)) myMarkedNumbers.push(cellVal);
+                                    } else {
+                                        myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal);
+                                    }
+                                    saveHost();
                                 } else {
-                                    myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal);
+                                    alert(`You haven't drawn number ${this.innerText} yet!`);
                                 }
-                                saveHost();
-                            } else {
-                                alert(`You haven't drawn number ${this.innerText} yet!`);
-                            }
-                        });
-                    } else {
-                        cell.classList.add('empty');
+                            });
+                        } else {
+                            cell.classList.add('empty');
+                        }
+                        ticketDiv.appendChild(cell);
                     }
-                    ticketDiv.appendChild(cell);
                 }
+                container.appendChild(ticketDiv);
             }
         }
 
