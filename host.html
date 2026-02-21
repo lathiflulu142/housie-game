@@ -68,7 +68,7 @@
         // ==========================================
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
-          const firebaseConfig = {
+              const firebaseConfig = {
     apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
     authDomain: "housieapp-3dc3e.firebaseapp.com",
     databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
@@ -83,11 +83,12 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const myPlayerName = "Host 🎤";
+        
+        // --- THIS IS THE MISSING LINE! ---
+        const currentNumberDisplay = document.getElementById('current-number');
 
-        // --- NEW: SESSION PERSISTENCE ---
         let hostState = JSON.parse(localStorage.getItem('housie_host'));
         
-        // Restore previous state, OR generate a brand new game
         function generateRoomCode() {
             let code = '';
             for (let i = 0; i < 4; i++) code += '0123456789'.charAt(Math.floor(Math.random() * 10));
@@ -101,8 +102,8 @@
         let currentDrawn = hostState ? hostState.currentDrawn : "Go!";
 
         document.getElementById('room-code-display').innerText = myRoomCode;
-        document.getElementById('current-number').innerText = currentDrawn;
-        if(currentDrawn !== "Go!") document.getElementById('current-number').style.fontSize = "60px";
+        currentNumberDisplay.innerText = currentDrawn;
+        if(currentDrawn !== "Go!") currentNumberDisplay.style.fontSize = "60px";
 
         function saveHost() {
             localStorage.setItem('housie_host', JSON.stringify({
@@ -112,7 +113,6 @@
 
         const roomRef = db.ref('rooms/' + myRoomCode);
         
-        // If it's a brand new game, wipe Firebase clean for this room
         if (!hostState) {
             roomRef.child('latestNumber').set("Ready");
             roomRef.child('resetTrigger').set(Date.now());
@@ -145,7 +145,6 @@
             if(confirm("Remove this player from the game?")) roomRef.child('players/' + playerId).remove();
         }
 
-        // --- NEW: Restore the 1-90 board directly from Firebase! ---
         roomRef.child('calledNumbers').on('value', (snapshot) => {
             const called = snapshot.val() || {};
             document.querySelectorAll('.board-cell').forEach(c => c.classList.remove('called'));
@@ -206,7 +205,6 @@
 
             document.getElementById('sound-pop').play().catch(()=>{}); 
             
-            // Sync to Firebase and Save Local
             roomRef.child('latestNumber').set(drawnNum);
             roomRef.child('calledNumbers/' + drawnNum).set(true);
             saveHost();
@@ -214,8 +212,6 @@
 
         function resetGame() {
             if (!confirm("Start a new game and reset all tickets?")) return; 
-            
-            // Clear memory entirely and refresh the page to start clean!
             roomRef.child('resetTrigger').set(Date.now());
             roomRef.child('latestNumber').set("Ready");
             roomRef.child('calledNumbers').remove();
@@ -242,7 +238,6 @@
             if (!ticketDiv) return;
             ticketDiv.innerHTML = ''; 
 
-            // If we don't have a saved ticket, build a new one!
             if (!myTicketNumbers) {
                 const ticketLayouts = [
                     [ [1, 0, 1, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1, 0, 1] ],
@@ -268,7 +263,6 @@
                 saveHost();
             }
 
-            // Render Ticket from Memory
             for (let row = 0; row < 3; row++) {
                 for (let col = 0; col < 9; col++) {
                     const cell = document.createElement('div');
@@ -278,13 +272,11 @@
 
                     if (cellVal !== null) {
                         cell.innerText = cellVal;
-                        // Restore Marked state
                         if (myMarkedNumbers.includes(cellVal)) cell.classList.add('marked');
 
                         cell.addEventListener('pointerdown', function() { 
                             if(document.getElementById(`board-num-${this.innerText}`).classList.contains('called')) {
                                 this.classList.toggle('marked'); 
-                                // Save mark to memory!
                                 if(this.classList.contains('marked')) {
                                     myMarkedNumbers.push(cellVal);
                                 } else {
