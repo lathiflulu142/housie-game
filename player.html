@@ -10,7 +10,7 @@
     <div id="join-screen" class="join-container">
         <div class="join-box">
             <h1>🎟️ Join Game</h1>
-            <p>Enter the code and your name to join!</p>
+            <p>Enter your name to join the party!</p>
             <input type="text" id="room-code-input" inputmode="numeric" pattern="[0-9]*" placeholder="Code (e.g. 1234)" maxlength="4" autocomplete="off">
             <input type="text" id="player-name-input" placeholder="Your Name" autocomplete="off" maxlength="15">
             <button id="join-btn" onclick="joinRoom(false)">Enter Game</button>
@@ -71,7 +71,7 @@
         // ==========================================
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
-          const firebaseConfig = {
+        const firebaseConfig = {
     apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
     authDomain: "housieapp-3dc3e.firebaseapp.com",
     databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
@@ -87,7 +87,6 @@
         const db = firebase.database();
         let currentRoomRef = null; 
 
-        // --- NEW: SESSION PERSISTENCE ---
         let playerState = JSON.parse(localStorage.getItem('housie_player'));
         let myRoomCode = "", myPlayerName = "", myPlayerId = "";
         let myTicketNumbers = null, myMarkedNumbers = [];
@@ -99,9 +98,15 @@
             }));
         }
 
-        // Auto-login if they refresh the page
         window.onload = function() {
-            if(playerState && playerState.myRoomCode) {
+            // NEW: Magic URL Checking!
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomFromUrl = urlParams.get('room');
+            if(roomFromUrl) {
+                document.getElementById('room-code-input').value = roomFromUrl;
+            }
+
+            if(playerState && playerState.myRoomCode && !roomFromUrl) {
                 document.getElementById('room-code-input').value = playerState.myRoomCode;
                 document.getElementById('player-name-input').value = playerState.myPlayerName;
                 myRoomCode = playerState.myRoomCode;
@@ -133,11 +138,13 @@
             myPlayerRef.set({ name: myPlayerName }); 
             myPlayerRef.onDisconnect().remove(); 
 
+            // --- THE AUTO-KICK FUNCTION ---
             myPlayerRef.on('value', (snapshot) => {
                 if (snapshot.val() === null && document.getElementById('game-screen').style.display === 'block') {
-                    alert("The host has removed you from the room.");
-                    localStorage.removeItem('housie_player'); // Wipe memory
-                    window.location.reload(); 
+                    alert("The Host has ended the party or removed you from the room.");
+                    localStorage.removeItem('housie_player'); // Delete memory of old room
+                    // Reload clean, removing any URL parameters
+                    window.location.href = window.location.pathname; 
                 }
             });
 
@@ -149,7 +156,6 @@
                 }
             });
 
-            // Rebuild the 1-90 board perfectly across refreshes
             currentRoomRef.child('calledNumbers').on('value', (snapshot) => {
                 const called = snapshot.val() || {};
                 document.querySelectorAll('.board-cell').forEach(c => c.classList.remove('called'));
@@ -159,7 +165,6 @@
                 }
             });
 
-            // Smart Reset: Only reset if the host triggers it AFTER we joined
             currentRoomRef.child('resetTrigger').on('value', (snapshot) => {
                 const triggerTime = snapshot.val();
                 if (triggerTime && triggerTime > lastResetTime) {
@@ -177,7 +182,6 @@
                 const claims = snapshot.val() || {};
                 const leaderboard = document.getElementById('winners-list');
                 const leaderboardBox = document.getElementById('leaderboard-box');
-                
                 leaderboard.innerHTML = '';
                 let hasWinners = false;
                 

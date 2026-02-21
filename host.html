@@ -14,9 +14,9 @@
             <div class="player-count-badge">👥 Players: <span id="player-count-display">0</span></div>
         </div>
         <div class="header-actions">
-            <button class="share-btn" onclick="shareRoom()">📲 Invite</button>
+            <button class="share-btn" onclick="openInviteModal()">📲 Invite</button>
             <button id="show-board-btn" onclick="openModal()">🔢 Board</button>
-            <button id="reset-btn" onclick="resetGame()">🔄 Reset</button>
+            <button id="reset-btn" onclick="openResetModal()">🔄 Reset</button>
         </div>
     </header>
 
@@ -58,6 +58,31 @@
         </div>
     </div>
 
+    <div id="invite-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeInviteModal()">&times;</span>
+            <h2>Invite Players</h2>
+            <p>Scan to auto-join Room:</p>
+            <div id="invite-code-display">----</div>
+            <img id="qr-code-img" src="" alt="QR Code" width="180">
+            <div class="action-buttons">
+                <button class="action-btn btn-blue" onclick="executeShare()">💬 Share Link via WhatsApp</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reset-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeResetModal()">&times;</span>
+            <h2>Game Options</h2>
+            <p>What would you like to do?</p>
+            <div class="action-buttons">
+                <button class="action-btn btn-blue" onclick="resetGame()">🔄 Next Round (Keep Players)</button>
+                <button class="action-btn btn-red" onclick="destroyRoom()">🛑 End Party (Kick All & New Room)</button>
+            </div>
+        </div>
+    </div>
+
     <audio id="sound-pop" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg" preload="auto"></audio>
     <audio id="sound-win" src="https://actions.google.com/sounds/v1/crowds/party_horn.ogg" preload="auto"></audio>
 
@@ -68,7 +93,7 @@
         // ==========================================
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
-              const firebaseConfig = {
+        const firebaseConfig = {
     apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
     authDomain: "housieapp-3dc3e.firebaseapp.com",
     databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
@@ -83,8 +108,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const myPlayerName = "Host 🎤";
-        
-        // --- THIS IS THE MISSING LINE! ---
         const currentNumberDisplay = document.getElementById('current-number');
 
         let hostState = JSON.parse(localStorage.getItem('housie_host'));
@@ -121,11 +144,36 @@
             saveHost();
         }
 
-        function shareRoom() {
-            const link = window.location.href.replace("host.html", "player.html");
-            const text = `🎉 Join my Housie Party! \nRoom Code: *${myRoomCode}*\nClick here to play: ${link}`;
+        // --- NEW: MODAL LOGIC & QR CODE ---
+        const boardModal = document.getElementById('board-modal');
+        const inviteModal = document.getElementById('invite-modal');
+        const resetModal = document.getElementById('reset-modal');
+
+        function openModal() { boardModal.style.display = "flex"; }
+        function closeModal() { boardModal.style.display = "none"; }
+        function openResetModal() { resetModal.style.display = "flex"; }
+        function closeResetModal() { resetModal.style.display = "none"; }
+
+        function openInviteModal() {
+            // Generates a magic link with the room code attached!
+            const magicLink = window.location.href.replace("host.html", "player.html") + "?room=" + myRoomCode;
+            document.getElementById('invite-code-display').innerText = myRoomCode;
+            document.getElementById('qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(magicLink)}`;
+            inviteModal.style.display = "flex";
+        }
+        function closeInviteModal() { inviteModal.style.display = "none"; }
+
+        function executeShare() {
+            const magicLink = window.location.href.replace("host.html", "player.html") + "?room=" + myRoomCode;
+            const text = `🎉 Join my Housie Party! \nRoom Code: *${myRoomCode}*\nClick here to play: ${magicLink}`;
             if (navigator.share) { navigator.share({ title: 'Housie Party', text: text });
             } else { navigator.clipboard.writeText(text); alert("Invite link copied!"); }
+        }
+
+        window.onclick = function(event) { 
+            if (event.target == boardModal) closeModal(); 
+            if (event.target == inviteModal) closeInviteModal();
+            if (event.target == resetModal) closeResetModal();
         }
 
         roomRef.child('players').on('value', (snapshot) => {
@@ -191,7 +239,7 @@
             if(prizeId === 'bot') isValid = document.querySelectorAll('#host-ticket .cell.row-2.marked').length === 5;
             if(prizeId === 'full') isValid = markedCells.length === 15;
 
-            if(!isValid) { alert(`❌ You haven't completed ${prizeName} yet! Keep drawing numbers!`); return; }
+            if(!isValid) { alert(`❌ You haven't completed ${prizeName} yet!`); return; }
             if (confirm(`Claim ${prizeName} as the Host?`)) { roomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName }); }
         }
 
@@ -210,14 +258,30 @@
             saveHost();
         }
 
+        // --- NEW: THE TWO RESET OPTIONS ---
         function resetGame() {
-            if (!confirm("Start a new game and reset all tickets?")) return; 
+            if (!confirm("Start next round with the same Room Code and players?")) return; 
+            numberBag = Array.from({length: 90}, (_, i) => i + 1);
+            myTicketNumbers = null;
+            myMarkedNumbers = [];
+            currentDrawn = "Go!";
+            currentNumberDisplay.innerText = "Go!";
+            
+            document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called'));
+            generateHostTicket();
+
             roomRef.child('resetTrigger').set(Date.now());
             roomRef.child('latestNumber').set("Ready");
             roomRef.child('calledNumbers').remove();
             roomRef.child('claims').remove(); 
-            localStorage.removeItem('housie_host');
-            window.location.reload(); 
+            closeResetModal();
+        }
+
+        function destroyRoom() {
+            if (!confirm("WARNING: This will kick all players, delete the room, and generate a new code. Proceed?")) return;
+            roomRef.remove(); // Deletes the entire room from Firebase!
+            localStorage.removeItem('housie_host'); // Wipe Host Memory
+            window.location.reload(); // Restarts the app with a brand new code
         }
 
         function setupFullBoard() {
@@ -294,11 +358,6 @@
                 }
             }
         }
-
-        const modal = document.getElementById('board-modal');
-        function openModal() { modal.style.display = "flex"; }
-        function closeModal() { modal.style.display = "none"; }
-        window.onclick = function(event) { if (event.target == modal) closeModal(); }
 
         setupFullBoard();
         generateHostTicket();
