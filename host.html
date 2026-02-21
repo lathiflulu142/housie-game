@@ -36,6 +36,14 @@
             <div id="host-ticket" class="ticket-grid"></div>
         </div>
 
+        <div class="claims-container" id="claims-box">
+            <button id="btn-jaldi" class="claim-btn" onclick="claimPrize('jaldi', 'Jaldi 5')">Jaldi 5</button>
+            <button id="btn-top" class="claim-btn" onclick="claimPrize('top', 'Top Line')">Top Line</button>
+            <button id="btn-mid" class="claim-btn" onclick="claimPrize('mid', 'Middle Line')">Mid Line</button>
+            <button id="btn-bot" class="claim-btn" onclick="claimPrize('bot', 'Bottom Line')">Bot Line</button>
+            <button id="btn-full" class="claim-btn full-house" onclick="claimPrize('full', 'Full House')">🎉 FULL HOUSE 🎉</button>
+        </div>
+
         <div class="host-player-list">
             <h2>Live Players</h2>
             <ul id="active-players"></ul>
@@ -60,7 +68,7 @@
         // ==========================================
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
-         const firebaseConfig = {
+       const firebaseConfig = {
     apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
     authDomain: "housieapp-3dc3e.firebaseapp.com",
     databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
@@ -74,6 +82,9 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        
+        // Give the Host a permanent cool name for the leaderboard!
+        const myPlayerName = "Host 🎤";
 
         let numberBag = Array.from({length: 90}, (_, i) => i + 1); 
         const currentNumberDisplay = document.getElementById('current-number');
@@ -93,7 +104,6 @@
         roomRef.child('resetTrigger').set(Date.now());
         roomRef.child('claims').remove(); 
 
-        // Share Button Logic
         function shareRoom() {
             const link = window.location.href.replace("host.html", "player.html");
             const text = `🎉 Join my Housie Party! \nRoom Code: *${myRoomCode}*\nClick here to play: ${link}`;
@@ -131,13 +141,19 @@
             leaderboard.innerHTML = '';
             let hasWinners = false;
 
+            // NEW: Hide Host buttons if someone else claims the prize
+            const prizeList = ['jaldi', 'top', 'mid', 'bot', 'full'];
+            prizeList.forEach(id => {
+                const btn = document.getElementById('btn-' + id);
+                if (btn) btn.style.display = claims[id] ? 'none' : 'inline-block';
+            });
+
             for(let prizeId in claims) {
                 hasWinners = true;
                 if(!knownClaims[prizeId]) {
-                    document.getElementById('sound-win').play().catch(()=>{}); // Play Win Sound
+                    document.getElementById('sound-win').play().catch(()=>{}); 
                     knownClaims[prizeId] = true;
                 }
-                // Add to Leaderboard
                 let li = document.createElement('li');
                 li.innerHTML = `<span>🎊 ${claims[prizeId].prizeName}</span> <span class="winner-name">${claims[prizeId].winner}</span>`;
                 leaderboard.appendChild(li);
@@ -150,6 +166,28 @@
             }
         });
 
+        // --- NEW: HOST SMART ANTI-CHEAT VALIDATOR ---
+        function claimPrize(prizeId, prizeName) {
+            let isValid = false;
+            // Only check the Host's ticket
+            const markedCells = document.querySelectorAll('#host-ticket .cell.marked');
+            
+            if(prizeId === 'jaldi') isValid = markedCells.length >= 5;
+            if(prizeId === 'top') isValid = document.querySelectorAll('#host-ticket .cell.row-0.marked').length === 5;
+            if(prizeId === 'mid') isValid = document.querySelectorAll('#host-ticket .cell.row-1.marked').length === 5;
+            if(prizeId === 'bot') isValid = document.querySelectorAll('#host-ticket .cell.row-2.marked').length === 5;
+            if(prizeId === 'full') isValid = markedCells.length === 15;
+
+            if(!isValid) {
+                alert(`❌ You haven't completed ${prizeName} yet! Keep drawing numbers!`);
+                return;
+            }
+
+            if (confirm(`Claim ${prizeName} as the Host?`)) {
+                roomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName });
+            }
+        }
+
         function drawNumber() {
             if (numberBag.length === 0) return;
             const drawnNum = numberBag.splice(Math.floor(Math.random() * numberBag.length), 1)[0];
@@ -160,7 +198,7 @@
             const boardCell = document.getElementById(`board-num-${drawnNum}`);
             if (boardCell) boardCell.classList.add('called');
 
-            document.getElementById('sound-pop').play().catch(()=>{}); // Play Draw Sound
+            document.getElementById('sound-pop').play().catch(()=>{}); 
             roomRef.child('latestNumber').set(drawnNum);
         }
 
@@ -194,7 +232,10 @@
             ticketDiv.innerHTML = ''; 
             const ticketLayouts = [
                 [ [1, 0, 1, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1, 0, 1] ],
-                [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 0, 1, 1] ]
+                [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 0, 1, 1] ],
+                [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ],
+                [ [0, 1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 1, 0, 1, 0, 1, 1, 0] ],
+                [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 1, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 1, 1, 0] ]
             ];
             const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
             const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
@@ -215,12 +256,16 @@
                 for (let col = 0; col < 9; col++) {
                     const cell = document.createElement('div');
                     cell.classList.add('cell');
+                    // Add row number for Anti-Cheat!
+                    cell.classList.add(`row-${row}`);
+
                     if (ticketNumbers[row][col] !== null) {
                         cell.innerText = ticketNumbers[row][col];
                         cell.addEventListener('pointerdown', function() { 
-                            // Check if host actually drew it
                             if(document.getElementById(`board-num-${this.innerText}`).classList.contains('called')) {
                                 this.classList.toggle('marked'); 
+                            } else {
+                                alert(`You haven't drawn number ${this.innerText} yet!`);
                             }
                         });
                     } else {
