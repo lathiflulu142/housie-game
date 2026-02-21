@@ -68,7 +68,7 @@
         // ==========================================
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
-       const firebaseConfig = {
+          const firebaseConfig = {
     apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
     authDomain: "housieapp-3dc3e.firebaseapp.com",
     databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
@@ -82,37 +82,50 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        
-        // Give the Host a permanent cool name for the leaderboard!
         const myPlayerName = "Host 🎤";
 
-        let numberBag = Array.from({length: 90}, (_, i) => i + 1); 
-        const currentNumberDisplay = document.getElementById('current-number');
-
+        // --- NEW: SESSION PERSISTENCE ---
+        let hostState = JSON.parse(localStorage.getItem('housie_host'));
+        
+        // Restore previous state, OR generate a brand new game
         function generateRoomCode() {
-            const numbers = '0123456789';
             let code = '';
-            for (let i = 0; i < 4; i++) code += numbers.charAt(Math.floor(Math.random() * numbers.length));
+            for (let i = 0; i < 4; i++) code += '0123456789'.charAt(Math.floor(Math.random() * 10));
             return code;
         }
 
-        const myRoomCode = generateRoomCode();
+        const myRoomCode = hostState ? hostState.myRoomCode : generateRoomCode();
+        let numberBag = hostState ? hostState.numberBag : Array.from({length: 90}, (_, i) => i + 1);
+        let myTicketNumbers = hostState ? hostState.myTicketNumbers : null;
+        let myMarkedNumbers = hostState ? hostState.myMarkedNumbers : [];
+        let currentDrawn = hostState ? hostState.currentDrawn : "Go!";
+
         document.getElementById('room-code-display').innerText = myRoomCode;
+        document.getElementById('current-number').innerText = currentDrawn;
+        if(currentDrawn !== "Go!") document.getElementById('current-number').style.fontSize = "60px";
+
+        function saveHost() {
+            localStorage.setItem('housie_host', JSON.stringify({
+                myRoomCode, numberBag, myTicketNumbers, myMarkedNumbers, currentDrawn
+            }));
+        }
 
         const roomRef = db.ref('rooms/' + myRoomCode);
-        roomRef.child('latestNumber').set("Ready");
-        roomRef.child('resetTrigger').set(Date.now());
-        roomRef.child('claims').remove(); 
+        
+        // If it's a brand new game, wipe Firebase clean for this room
+        if (!hostState) {
+            roomRef.child('latestNumber').set("Ready");
+            roomRef.child('resetTrigger').set(Date.now());
+            roomRef.child('claims').remove(); 
+            roomRef.child('calledNumbers').remove();
+            saveHost();
+        }
 
         function shareRoom() {
             const link = window.location.href.replace("host.html", "player.html");
             const text = `🎉 Join my Housie Party! \nRoom Code: *${myRoomCode}*\nClick here to play: ${link}`;
-            if (navigator.share) {
-                navigator.share({ title: 'Housie Party', text: text });
-            } else {
-                navigator.clipboard.writeText(text);
-                alert("Invite link and code copied to clipboard! Paste it in WhatsApp.");
-            }
+            if (navigator.share) { navigator.share({ title: 'Housie Party', text: text });
+            } else { navigator.clipboard.writeText(text); alert("Invite link copied!"); }
         }
 
         roomRef.child('players').on('value', (snapshot) => {
@@ -132,16 +145,24 @@
             if(confirm("Remove this player from the game?")) roomRef.child('players/' + playerId).remove();
         }
 
+        // --- NEW: Restore the 1-90 board directly from Firebase! ---
+        roomRef.child('calledNumbers').on('value', (snapshot) => {
+            const called = snapshot.val() || {};
+            document.querySelectorAll('.board-cell').forEach(c => c.classList.remove('called'));
+            for(let num in called) {
+                let cell = document.getElementById(`board-num-${num}`);
+                if(cell) cell.classList.add('called');
+            }
+        });
+
         let knownClaims = {};
         roomRef.child('claims').on('value', (snapshot) => {
             const claims = snapshot.val() || {};
             const leaderboard = document.getElementById('winners-list');
             const leaderboardBox = document.getElementById('leaderboard-box');
-            
             leaderboard.innerHTML = '';
             let hasWinners = false;
 
-            // NEW: Hide Host buttons if someone else claims the prize
             const prizeList = ['jaldi', 'top', 'mid', 'bot', 'full'];
             prizeList.forEach(id => {
                 const btn = document.getElementById('btn-' + id);
@@ -158,59 +179,49 @@
                 li.innerHTML = `<span>🎊 ${claims[prizeId].prizeName}</span> <span class="winner-name">${claims[prizeId].winner}</span>`;
                 leaderboard.appendChild(li);
             }
-            
             leaderboardBox.style.display = hasWinners ? "block" : "none";
-
-            for(let prizeId in knownClaims) {
-                if(!claims[prizeId]) delete knownClaims[prizeId];
-            }
+            for(let prizeId in knownClaims) { if(!claims[prizeId]) delete knownClaims[prizeId]; }
         });
 
-        // --- NEW: HOST SMART ANTI-CHEAT VALIDATOR ---
         function claimPrize(prizeId, prizeName) {
             let isValid = false;
-            // Only check the Host's ticket
             const markedCells = document.querySelectorAll('#host-ticket .cell.marked');
-            
             if(prizeId === 'jaldi') isValid = markedCells.length >= 5;
             if(prizeId === 'top') isValid = document.querySelectorAll('#host-ticket .cell.row-0.marked').length === 5;
             if(prizeId === 'mid') isValid = document.querySelectorAll('#host-ticket .cell.row-1.marked').length === 5;
             if(prizeId === 'bot') isValid = document.querySelectorAll('#host-ticket .cell.row-2.marked').length === 5;
             if(prizeId === 'full') isValid = markedCells.length === 15;
 
-            if(!isValid) {
-                alert(`❌ You haven't completed ${prizeName} yet! Keep drawing numbers!`);
-                return;
-            }
-
-            if (confirm(`Claim ${prizeName} as the Host?`)) {
-                roomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName });
-            }
+            if(!isValid) { alert(`❌ You haven't completed ${prizeName} yet! Keep drawing numbers!`); return; }
+            if (confirm(`Claim ${prizeName} as the Host?`)) { roomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName }); }
         }
 
         function drawNumber() {
             if (numberBag.length === 0) return;
             const drawnNum = numberBag.splice(Math.floor(Math.random() * numberBag.length), 1)[0];
             
+            currentDrawn = drawnNum;
             currentNumberDisplay.innerText = drawnNum;
             currentNumberDisplay.style.fontSize = "60px";
 
-            const boardCell = document.getElementById(`board-num-${drawnNum}`);
-            if (boardCell) boardCell.classList.add('called');
-
             document.getElementById('sound-pop').play().catch(()=>{}); 
+            
+            // Sync to Firebase and Save Local
             roomRef.child('latestNumber').set(drawnNum);
+            roomRef.child('calledNumbers/' + drawnNum).set(true);
+            saveHost();
         }
 
         function resetGame() {
             if (!confirm("Start a new game and reset all tickets?")) return; 
-            numberBag = Array.from({length: 90}, (_, i) => i + 1);
-            currentNumberDisplay.innerText = "Go!";
-            document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called'));
-            generateHostTicket();
+            
+            // Clear memory entirely and refresh the page to start clean!
             roomRef.child('resetTrigger').set(Date.now());
             roomRef.child('latestNumber').set("Ready");
+            roomRef.child('calledNumbers').remove();
             roomRef.child('claims').remove(); 
+            localStorage.removeItem('housie_host');
+            window.location.reload(); 
         }
 
         function setupFullBoard() {
@@ -230,40 +241,56 @@
             const ticketDiv = document.getElementById('host-ticket');
             if (!ticketDiv) return;
             ticketDiv.innerHTML = ''; 
-            const ticketLayouts = [
-                [ [1, 0, 1, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1, 0, 1] ],
-                [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 0, 1, 1] ],
-                [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ],
-                [ [0, 1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 1, 0, 1, 0, 1, 1, 0] ],
-                [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 1, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 1, 1, 0] ]
-            ];
-            const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
-            const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
-            let ticketNumbers = [[], [], []];
 
-            for (let col = 0; col < 9; col++) {
-                let numbersNeeded = (ticketPattern[0][col] + ticketPattern[1][col] + ticketPattern[2][col]);
-                let possibleNumbers = [];
-                for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
-                let selectedForCol = [];
-                for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
-                selectedForCol.sort((a, b) => a - b); 
-                let numIndex = 0;
-                for (let row = 0; row < 3; row++) ticketNumbers[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
+            // If we don't have a saved ticket, build a new one!
+            if (!myTicketNumbers) {
+                const ticketLayouts = [
+                    [ [1, 0, 1, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1, 0, 1] ],
+                    [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 0, 1, 1] ],
+                    [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ],
+                    [ [0, 1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 1, 0, 1, 0, 1, 1, 0] ],
+                    [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 1, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 1, 1, 0] ]
+                ];
+                const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
+                const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
+                myTicketNumbers = [[], [], []];
+
+                for (let col = 0; col < 9; col++) {
+                    let numbersNeeded = (ticketPattern[0][col] + ticketPattern[1][col] + ticketPattern[2][col]);
+                    let possibleNumbers = [];
+                    for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
+                    let selectedForCol = [];
+                    for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
+                    selectedForCol.sort((a, b) => a - b); 
+                    let numIndex = 0;
+                    for (let row = 0; row < 3; row++) myTicketNumbers[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
+                }
+                saveHost();
             }
 
+            // Render Ticket from Memory
             for (let row = 0; row < 3; row++) {
                 for (let col = 0; col < 9; col++) {
                     const cell = document.createElement('div');
                     cell.classList.add('cell');
-                    // Add row number for Anti-Cheat!
                     cell.classList.add(`row-${row}`);
+                    let cellVal = myTicketNumbers[row][col];
 
-                    if (ticketNumbers[row][col] !== null) {
-                        cell.innerText = ticketNumbers[row][col];
+                    if (cellVal !== null) {
+                        cell.innerText = cellVal;
+                        // Restore Marked state
+                        if (myMarkedNumbers.includes(cellVal)) cell.classList.add('marked');
+
                         cell.addEventListener('pointerdown', function() { 
                             if(document.getElementById(`board-num-${this.innerText}`).classList.contains('called')) {
                                 this.classList.toggle('marked'); 
+                                // Save mark to memory!
+                                if(this.classList.contains('marked')) {
+                                    myMarkedNumbers.push(cellVal);
+                                } else {
+                                    myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal);
+                                }
+                                saveHost();
                             } else {
                                 alert(`You haven't drawn number ${this.innerText} yet!`);
                             }
