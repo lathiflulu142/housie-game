@@ -84,15 +84,15 @@
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
         const firebaseConfig = {
-    apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
-    authDomain: "housieapp-3dc3e.firebaseapp.com",
-    databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
-    projectId: "housieapp-3dc3e",
-    storageBucket: "housieapp-3dc3e.firebasestorage.app",
-    messagingSenderId: "709288045803",
-    appId: "1:709288045803:web:6505478d4588fec2aae2ae",
-    measurementId: "G-6SBEGQB7BE"
-  };
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID",
+            measurementId: "YOUR_MEASUREMENT_ID"
+        };
         // ==========================================
 
         firebase.initializeApp(firebaseConfig);
@@ -145,13 +145,10 @@
 
         function shootConfetti() {
             for(let i=0; i<80; i++) {
-                let conf = document.createElement('div');
-                conf.className = 'confetti';
-                conf.style.left = Math.random() * 100 + 'vw';
-                conf.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                let conf = document.createElement('div'); conf.className = 'confetti';
+                conf.style.left = Math.random() * 100 + 'vw'; conf.style.animationDuration = (Math.random() * 2 + 2) + 's';
                 conf.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
-                document.body.appendChild(conf);
-                setTimeout(() => conf.remove(), 4000);
+                document.body.appendChild(conf); setTimeout(() => conf.remove(), 4000);
             }
         }
 
@@ -198,22 +195,14 @@
         }
         window.onclick = function(event) { if (event.target == boardModal) closeModal(); if (event.target == inviteModal) closeInviteModal(); if (event.target == resetModal) closeResetModal(); }
 
-        // --- UPDATED: DISPLAY PLAYER NAME & TICKET COUNT ---
         roomRef.child('players').on('value', (snapshot) => {
-            const players = snapshot.val() || {};
-            document.getElementById('player-count-display').innerText = Object.keys(players).length;
+            const players = snapshot.val() || {}; document.getElementById('player-count-display').innerText = Object.keys(players).length;
             const playerList = document.getElementById('active-players'); playerList.innerHTML = ''; 
             for (let playerId in players) {
                 let li = document.createElement('li'); li.className = 'player-item';
                 let pName = players[playerId].name || "Unknown";
                 let pTix = players[playerId].tickets || 1;
-                li.innerHTML = `
-                    <span>
-                        👤 <b>${pName}</b> 
-                        <small style="color: #6e8efb; font-weight: 900; margin-left: 8px;">(${pTix} 🎟️)</small>
-                    </span> 
-                    <button class="kick-btn" onclick="kickPlayer('${playerId}')">Kick</button>
-                `;
+                li.innerHTML = `<span>👤 <b>${pName}</b> <small style="color: #6e8efb; font-weight: 900; margin-left: 8px;">(${pTix} 🎟️)</small></span> <button class="kick-btn" onclick="kickPlayer('${playerId}')">Kick</button>`;
                 playerList.appendChild(li);
             }
         });
@@ -226,54 +215,31 @@
         });
 
         roomRef.child('claims').on('value', (snapshot) => {
-            const claims = snapshot.val() || {}; 
-            const leaderboard = document.getElementById('winners-list'); const leaderboardBox = document.getElementById('leaderboard-box');
+            const claims = snapshot.val() || {}; const leaderboard = document.getElementById('winners-list'); const leaderboardBox = document.getElementById('leaderboard-box');
             leaderboard.innerHTML = ''; let hasWinners = false;
 
-            let hasJaldi = !!claims['jaldi'];
-            let hasTop = !!claims['top']; let hasMid = !!claims['mid']; let hasBot = !!claims['bot'];
-            let allLines = hasTop && hasMid && hasBot;
-            let isFull = !!claims['full'];
+            let hasJaldi = !!claims['jaldi']; let hasTop = !!claims['top']; let hasMid = !!claims['mid']; let hasBot = !!claims['bot']; let allLines = hasTop && hasMid && hasBot; let isFull = !!claims['full'];
 
-            const btnJaldi = document.getElementById('btn-jaldi');
-            if(btnJaldi) btnJaldi.style.display = hasJaldi ? 'none' : 'inline-block';
-
+            const btnJaldi = document.getElementById('btn-jaldi'); if(btnJaldi) btnJaldi.style.display = hasJaldi ? 'none' : 'inline-block';
             ['top', 'mid', 'bot'].forEach(line => {
                 let btn = document.getElementById('btn-' + line);
-                if(btn) {
-                    if(claims[line]) { btn.style.display = 'none'; } 
-                    else {
-                        btn.style.display = 'inline-block';
-                        if(hasJaldi) { btn.disabled = false; btn.classList.remove('disabled'); } 
-                        else { btn.disabled = true; btn.classList.add('disabled'); }
-                    }
-                }
+                if(btn) { if(claims[line]) { btn.style.display = 'none'; } else { btn.style.display = 'inline-block'; if(hasJaldi) { btn.disabled = false; btn.classList.remove('disabled'); } else { btn.disabled = true; btn.classList.add('disabled'); } } }
             });
 
             let fullBtn = document.getElementById('btn-full');
             if (fullBtn) {
                 if(isFull) {
-                    fullBtn.style.display = 'none';
-                    shootConfetti(); 
-                    document.getElementById('draw-btn').disabled = true;
-                    document.getElementById('draw-btn').innerText = "Game Over! 🎉";
-                    document.getElementById('draw-btn').classList.add('disabled');
+                    fullBtn.style.display = 'none'; shootConfetti(); document.getElementById('draw-btn').disabled = true; document.getElementById('draw-btn').innerText = "Game Over! 🎉"; document.getElementById('draw-btn').classList.add('disabled');
                 } else {
-                    fullBtn.style.display = 'inline-block';
-                    if (allLines) { fullBtn.disabled = false; fullBtn.classList.remove('disabled'); } 
-                    else { fullBtn.disabled = true; fullBtn.classList.add('disabled'); }
+                    fullBtn.style.display = 'inline-block'; if (allLines) { fullBtn.disabled = false; fullBtn.classList.remove('disabled'); } else { fullBtn.disabled = true; fullBtn.classList.add('disabled'); }
                 }
             }
 
             for(let prizeId in claims) {
-                hasWinners = true;
-                if(!window.knownClaims) window.knownClaims = {};
+                hasWinners = true; if(!window.knownClaims) window.knownClaims = {};
                 if(!window.knownClaims[prizeId]) { 
-                    document.getElementById('sound-win').play().catch(()=>{}); 
-                    window.knownClaims[prizeId] = true; 
-                    const popup = document.getElementById('celebration-popup');
-                    popup.innerText = `🎉 ${claims[prizeId].winner} won ${claims[prizeId].prizeName}! 🎉`; 
-                    popup.classList.add('show'); setTimeout(() => popup.classList.remove('show'), 4000); 
+                    document.getElementById('sound-win').play().catch(()=>{}); window.knownClaims[prizeId] = true; 
+                    const popup = document.getElementById('celebration-popup'); popup.innerText = `🎉 ${claims[prizeId].winner} won ${claims[prizeId].prizeName}! 🎉`; popup.classList.add('show'); setTimeout(() => popup.classList.remove('show'), 4000); 
                 }
                 let li = document.createElement('li'); li.innerHTML = `<span>🎊 ${claims[prizeId].prizeName}</span> <span class="winner-name">${claims[prizeId].winner}</span>`; leaderboard.appendChild(li);
             }
@@ -296,36 +262,22 @@
         }
 
         function drawNumber() {
-            let drawBtn = document.getElementById('draw-btn');
-            if (numberBag.length === 0 || drawBtn.disabled) return;
-            drawBtn.disabled = true; 
-
-            const drawnNum = numberBag.splice(Math.floor(Math.random() * numberBag.length), 1)[0];
-            roomRef.child('isRolling').set(true); 
-
+            let drawBtn = document.getElementById('draw-btn'); if (numberBag.length === 0 || drawBtn.disabled) return; drawBtn.disabled = true; 
+            const drawnNum = numberBag.splice(Math.floor(Math.random() * numberBag.length), 1)[0]; roomRef.child('isRolling').set(true); 
             setTimeout(() => {
-                roomRef.child('isRolling').set(false);
-                roomRef.child('latestNumber').set(drawnNum); 
-                roomRef.child('calledNumbers/' + drawnNum).set(true); 
-                currentDrawn = drawnNum; currentNumberDisplay.innerText = drawnNum; currentNumberDisplay.style.fontSize = "60px";
-                saveHost();
-                drawBtn.disabled = false; 
+                roomRef.child('isRolling').set(false); roomRef.child('latestNumber').set(drawnNum); roomRef.child('calledNumbers/' + drawnNum).set(true); 
+                currentDrawn = drawnNum; currentNumberDisplay.innerText = drawnNum; currentNumberDisplay.style.fontSize = "60px"; saveHost(); drawBtn.disabled = false; 
             }, 1500); 
         }
 
         function resetGame() {
             if (!confirm("Start next round with the same Room Code?")) return; 
-            numberBag = Array.from({length: 90}, (_, i) => i + 1); myTicketNumbers = null; myMarkedNumbers = [];
-            currentDrawn = "Go!"; currentNumberDisplay.innerText = "Go!"; ticketCount = parseInt(document.getElementById('ticket-count-input').value);
-            document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called')); 
-            document.getElementById('draw-btn').disabled = false; document.getElementById('draw-btn').innerText = "Draw Number"; document.getElementById('draw-btn').classList.remove('disabled');
-            window.knownClaims = {}; generateHostTicket();
-            roomRef.child('resetTrigger').set(Date.now()); roomRef.child('latestNumber').set("Ready"); roomRef.child('calledNumbers').remove(); roomRef.child('claims').remove(); 
-            closeResetModal();
+            numberBag = Array.from({length: 90}, (_, i) => i + 1); myTicketNumbers = null; myMarkedNumbers = []; currentDrawn = "Go!"; currentNumberDisplay.innerText = "Go!"; ticketCount = parseInt(document.getElementById('ticket-count-input').value);
+            document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called')); document.getElementById('draw-btn').disabled = false; document.getElementById('draw-btn').innerText = "Draw Number"; document.getElementById('draw-btn').classList.remove('disabled');
+            window.knownClaims = {}; generateHostTicket(); roomRef.child('resetTrigger').set(Date.now()); roomRef.child('latestNumber').set("Ready"); roomRef.child('calledNumbers').remove(); roomRef.child('claims').remove(); closeResetModal();
         }
 
         function destroyRoom() { if (!confirm("WARNING: Kicks all players. Proceed?")) return; roomRef.remove(); localStorage.removeItem('housie_host'); window.location.reload(); }
-
         function setupFullBoard() { const fullBoard = document.getElementById('full-board'); if (!fullBoard) return; fullBoard.innerHTML = ''; for (let i = 1; i <= 90; i++) { const cell = document.createElement('div'); cell.classList.add('board-cell'); cell.id = `board-num-${i}`; cell.innerText = i; fullBoard.appendChild(cell); } }
 
         function highlightMyNumbersOnBoard() {
@@ -341,7 +293,6 @@
                 const ticketLayouts = [ [ [1, 0, 1, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1, 0, 1] ], [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 0, 1, 1] ], [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ], [ [0, 1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 1, 0, 1, 0, 1, 1, 0] ], [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 1, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 1, 1, 0] ] ];
                 const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
                 let masterPool = []; for (let c = 0; c < 9; c++) { let colNums = []; for (let i = colRanges[c][0]; i <= colRanges[c][1]; i++) colNums.push(i); masterPool.push(colNums); }
-
                 for (let t = 0; t < ticketCount; t++) {
                     let singleTicket = [[], [], []]; const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
                     for (let col = 0; col < 9; col++) {
@@ -371,9 +322,7 @@
                                     if(this.classList.contains('marked')) { if(!myMarkedNumbers.includes(cellVal)) myMarkedNumbers.push(cellVal); } else { myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal); }
                                     saveHost();
                                     document.querySelectorAll('#host-ticket-container .cell').forEach(c => { if(parseInt(c.innerText) === cellVal) { c.classList.remove('blink-active'); if(myMarkedNumbers.includes(cellVal)) c.classList.add('marked'); else c.classList.remove('marked'); } });
-                                } else {
-                                    this.classList.add('error-shake'); setTimeout(() => this.classList.remove('error-shake'), 300);
-                                }
+                                } else { this.classList.add('error-shake'); setTimeout(() => this.classList.remove('error-shake'), 300); }
                             });
                         } else { cell.classList.add('empty'); }
                         ticketDiv.appendChild(cell);

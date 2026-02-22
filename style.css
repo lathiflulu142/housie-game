@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800;900&display=swap');
 
-/* --- THEME VARIABLES --- */
 :root {
     --bg-grad-1: #a8edea; --bg-grad-2: #fed6e3;
     --text-color: #2c3e50; --box-bg: rgba(255, 255, 255, 0.85);
@@ -21,91 +20,45 @@ body.theme-dark {
     --btn-disabled: #555555;
 }
 
-/* --- BASE STYLES --- */
-body {
-    font-family: 'Poppins', sans-serif;
-    background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%);
-    background-attachment: fixed; margin: 0; padding: 0; color: var(--text-color);
-    text-align: center; overflow-x: hidden; transition: background 0.5s ease;
-}
-
+body { font-family: 'Poppins', sans-serif; background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 100%); background-attachment: fixed; margin: 0; padding: 0; color: var(--text-color); text-align: center; overflow-x: hidden; transition: background 0.5s ease; }
 h1, h2, h3 { margin: 10px 0; font-weight: 800; letter-spacing: 0.5px; }
-
-header {
-    background: var(--box-bg); padding: 15px 20px;
-    backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-    display: flex; justify-content: space-between; align-items: center;
-    position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.2);
-}
-
+header { background: var(--box-bg); padding: 15px 20px; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); box-shadow: 0 8px 32px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.2); }
 .room-badge { background: #2c3e50; color: #f1c40f; padding: 6px 15px; border-radius: 20px; font-weight: 800; font-size: 14px; display: inline-block; margin-top: 5px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
 .header-actions button, .theme-btn { background: var(--btn-primary); color: white; border: none; padding: 10px 15px; border-radius: 12px; font-weight: 600; cursor: pointer; margin-left: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s; }
 .header-actions button:active, .theme-btn:active { transform: scale(0.92); }
 
-/* --- TICKETS (GLASSMORPHISM) --- */
+/* --- FIX FOR LOGIN SCREEN ALIGNMENT --- */
+.join-container { display: flex; justify-content: center; align-items: center; height: 100vh; background: rgba(0,0,0,0.5); }
+.join-box { background: var(--box-bg); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 90%; max-width: 350px; display: flex; flex-direction: column; align-items: center; }
+.join-box input, .join-box select { width: 100%; box-sizing: border-box; padding: 15px; font-size: 18px; font-weight: bold; text-align: center; border: 2px solid #ccc; border-radius: 10px; margin-bottom: 15px; background: white; color: #2c3e50; display: block; }
+#join-btn { background: #ff0844; color: white; border: none; width: 100%; box-sizing: border-box; padding: 15px; font-size: 20px; font-weight: bold; border-radius: 10px; cursor: pointer; display: block; }
+
 .ticket-container { margin: 20px auto; width: 95%; max-width: 600px; }
-.ticket-grid { 
-    display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; 
-    background: var(--ticket-bg); padding: 10px; border-radius: 15px; 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-bottom: 25px; 
-    border: 2px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);
-}
-.cell { 
-    background: var(--cell-bg); display: flex; justify-content: center; align-items: center; 
-    font-size: 18px; font-weight: 800; color: var(--cell-text); aspect-ratio: 1; 
-    border-radius: 8px; cursor: pointer; user-select: none; transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-}
+.ticket-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; background: var(--ticket-bg); padding: 10px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); margin-bottom: 25px; border: 2px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
+.cell { background: var(--cell-bg); display: flex; justify-content: center; align-items: center; font-size: 18px; font-weight: 800; color: var(--cell-text); aspect-ratio: 1; border-radius: 8px; cursor: pointer; user-select: none; transition: all 0.25s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
 .cell.empty { background: transparent; pointer-events: none; box-shadow: none; }
 .cell.marked { background: var(--cell-marked-bg); color: var(--cell-marked-text); transform: scale(0.9); box-shadow: inset 0 4px 8px rgba(0,0,0,0.4); }
 
-/* --- ANIMATIONS --- */
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25%, 75% { transform: translateX(-5px); } 50% { transform: translateX(5px); } }
 .error-shake { background-color: #ff4757 !important; color: white !important; animation: shake 0.3s ease-in-out; }
-
-@keyframes blink-two-colors {
-    0%, 100% { background-color: #ff0844; color: white; transform: scale(1); }
-    50% { background-color: #f1c40f; color: #333; transform: scale(1.15) rotate(3deg); box-shadow: 0 0 15px #f1c40f; z-index: 10; }
-}
+@keyframes blink-two-colors { 0%, 100% { background-color: #ff0844; color: white; transform: scale(1); } 50% { background-color: #f1c40f; color: #333; transform: scale(1.15) rotate(3deg); box-shadow: 0 0 15px #f1c40f; z-index: 10; } }
 .blink-active { animation: blink-two-colors 0.5s infinite !important; border: 2px solid #fff; }
-
-@keyframes slotMachine { 
-    0% { transform: translateY(-10px); opacity: 0; } 
-    50% { opacity: 1; transform: translateY(0); } 
-    100% { transform: translateY(10px); opacity: 0; } 
-}
+@keyframes slotMachine { 0% { transform: translateY(-10px); opacity: 0; } 50% { opacity: 1; transform: translateY(0); } 100% { transform: translateY(10px); opacity: 0; } }
 .rolling-text { animation: slotMachine 0.1s infinite linear; color: #6e8efb !important; text-shadow: 0 0 10px #6e8efb; }
 
-/* --- HOST DRAW SECTION --- */
 .draw-section { margin: 30px 0; }
-#current-number { 
-    font-size: 50px; font-weight: 900; color: #ff0844; background: white; 
-    width: 120px; height: 120px; line-height: 120px; border-radius: 50%; 
-    margin: 0 auto 20px auto; box-shadow: 0 15px 35px rgba(0,0,0,0.2), inset 0 0 20px rgba(0,0,0,0.05); 
-    border: 6px solid #ff0844; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); transition: all 0.2s;
-}
-#draw-btn { 
-    background: linear-gradient(135deg, #00b09b, #96c93d); color: white; border: none; 
-    padding: 15px 40px; font-size: 22px; font-weight: 900; border-radius: 40px; cursor: pointer; 
-    box-shadow: 0 10px 20px rgba(0,176,155,0.4); text-transform: uppercase; transition: transform 0.2s, filter 0.2s;
-}
+#current-number { font-size: 50px; font-weight: 900; color: #ff0844; background: white; width: 120px; height: 120px; line-height: 120px; border-radius: 50%; margin: 0 auto 20px auto; box-shadow: 0 15px 35px rgba(0,0,0,0.2), inset 0 0 20px rgba(0,0,0,0.05); border: 6px solid #ff0844; text-shadow: 2px 2px 4px rgba(0,0,0,0.1); transition: all 0.2s; }
+#draw-btn { background: linear-gradient(135deg, #00b09b, #96c93d); color: white; border: none; padding: 15px 40px; font-size: 22px; font-weight: 900; border-radius: 40px; cursor: pointer; box-shadow: 0 10px 20px rgba(0,176,155,0.4); text-transform: uppercase; transition: transform 0.2s, filter 0.2s; }
 #draw-btn:active { transform: scale(0.95); }
 #draw-btn.disabled { background: var(--btn-disabled); box-shadow: none; cursor: not-allowed; opacity: 0.8; transform: none; }
 
-/* --- CLAIMS --- */
 .claims-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 20px auto; width: 95%; max-width: 600px; }
-.claim-btn { 
-    background: var(--box-bg); border: 2px solid #6e8efb; color: var(--text-color); 
-    padding: 12px 20px; font-weight: 800; border-radius: 25px; cursor: pointer; transition: all 0.3s;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-}
+.claim-btn { background: var(--box-bg); border: 2px solid #6e8efb; color: var(--text-color); padding: 12px 20px; font-weight: 800; border-radius: 25px; cursor: pointer; transition: all 0.3s; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
 .claim-btn:active { transform: scale(0.9); }
 .claim-btn.disabled { border-color: var(--btn-disabled); color: #888; background: #eee; cursor: not-allowed; box-shadow: none; opacity: 0.6; }
 .claim-btn.full-house { background: linear-gradient(135deg, #ff0844, #ffb199); color: white; border: none; width: 100%; font-size: 20px; padding: 18px; text-transform: uppercase; letter-spacing: 1px; }
 .claim-btn.full-house.disabled { background: var(--btn-disabled); color: #666; }
 
-/* --- LEADERBOARD & MODALS --- */
 .leaderboard { background: rgba(255, 243, 205, 0.9); border-radius: 15px; padding: 20px; margin: 15px auto; width: 95%; max-width: 600px; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,0.1); backdrop-filter: blur(10px); }
 .leaderboard h3 { color: #856404; font-size: 20px; border-bottom: 3px dashed #ffeeba; padding-bottom: 8px; margin-top: 0; }
 .leaderboard ul { list-style: none; padding: 0; margin: 0; font-size: 16px; }
@@ -126,6 +79,11 @@ body.theme-dark .board-cell.my-number { background: #3a2a50; color: #fff;}
 #celebration-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); background: linear-gradient(135deg, #FFD700, #ff5e62); padding: 40px; border-radius: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); z-index: 9999; color: white; font-size: 32px; font-weight: 900; text-align: center; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); border: 5px solid white; text-shadow: 2px 2px 5px rgba(0,0,0,0.3); pointer-events: none; }
 #celebration-popup.show { transform: translate(-50%, -50%) scale(1); }
 
-/* --- CONFETTI --- */
 .confetti { position: fixed; top: -10px; width: 12px; height: 12px; z-index: 9998; animation: fall linear forwards; opacity: 0.9; border-radius: 2px; }
 @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+.host-ticket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+#ticket-count-input { padding: 8px; font-weight: bold; border-radius: 8px; border: 2px solid #ccc; cursor: pointer; }
+.host-player-list { background: var(--box-bg); padding: 15px; border-radius: 15px; margin: 20px auto; width: 95%; max-width: 600px; border: 2px dashed #00b09b; text-align: left; }
+#active-players { list-style: none; padding: 0; margin: 0; max-height: 150px; overflow-y: auto; }
+.player-item { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.05); padding: 8px 12px; border-radius: 8px; margin-bottom: 5px; font-weight: bold; }
+.kick-btn { background: #ff4757; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }

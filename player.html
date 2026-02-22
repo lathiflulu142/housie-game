@@ -85,15 +85,15 @@
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
         const firebaseConfig = {
-    apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
-    authDomain: "housieapp-3dc3e.firebaseapp.com",
-    databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
-    projectId: "housieapp-3dc3e",
-    storageBucket: "housieapp-3dc3e.firebasestorage.app",
-    messagingSenderId: "709288045803",
-    appId: "1:709288045803:web:6505478d4588fec2aae2ae",
-    measurementId: "G-6SBEGQB7BE"
-  };
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID",
+            measurementId: "YOUR_MEASUREMENT_ID"
+        };
         // ==========================================
 
         firebase.initializeApp(firebaseConfig);
@@ -201,46 +201,24 @@
                 const leaderboard = document.getElementById('winners-list'); const leaderboardBox = document.getElementById('leaderboard-box');
                 leaderboard.innerHTML = ''; let hasWinners = false;
 
-                let hasJaldi = !!claims['jaldi'];
-                let hasTop = !!claims['top']; let hasMid = !!claims['mid']; let hasBot = !!claims['bot'];
-                let allLines = hasTop && hasMid && hasBot;
-                let isFull = !!claims['full'];
+                let hasJaldi = !!claims['jaldi']; let hasTop = !!claims['top']; let hasMid = !!claims['mid']; let hasBot = !!claims['bot']; let allLines = hasTop && hasMid && hasBot; let isFull = !!claims['full'];
 
-                const btnJaldi = document.getElementById('btn-jaldi');
-                if(btnJaldi) btnJaldi.style.display = hasJaldi ? 'none' : 'inline-block';
-
+                const btnJaldi = document.getElementById('btn-jaldi'); if(btnJaldi) btnJaldi.style.display = hasJaldi ? 'none' : 'inline-block';
                 ['top', 'mid', 'bot'].forEach(line => {
                     let btn = document.getElementById('btn-' + line);
-                    if(btn) {
-                        if(claims[line]) { btn.style.display = 'none'; } 
-                        else {
-                            btn.style.display = 'inline-block';
-                            if(hasJaldi) { btn.disabled = false; btn.classList.remove('disabled'); } 
-                            else { btn.disabled = true; btn.classList.add('disabled'); }
-                        }
-                    }
+                    if(btn) { if(claims[line]) { btn.style.display = 'none'; } else { btn.style.display = 'inline-block'; if(hasJaldi) { btn.disabled = false; btn.classList.remove('disabled'); } else { btn.disabled = true; btn.classList.add('disabled'); } } }
                 });
 
                 let fullBtn = document.getElementById('btn-full');
                 if (fullBtn) {
-                    if(isFull) {
-                        fullBtn.style.display = 'none';
-                        shootConfetti(); 
-                    } else {
-                        fullBtn.style.display = 'inline-block';
-                        if (allLines) { fullBtn.disabled = false; fullBtn.classList.remove('disabled'); } 
-                        else { fullBtn.disabled = true; fullBtn.classList.add('disabled'); }
-                    }
+                    if(isFull) { fullBtn.style.display = 'none'; shootConfetti(); } else { fullBtn.style.display = 'inline-block'; if (allLines) { fullBtn.disabled = false; fullBtn.classList.remove('disabled'); } else { fullBtn.disabled = true; fullBtn.classList.add('disabled'); } }
                 }
 
                 for(let prizeId in claims) {
-                    hasWinners = true;
-                    if(!window.knownClaims) window.knownClaims = {};
+                    hasWinners = true; if(!window.knownClaims) window.knownClaims = {};
                     if(!window.knownClaims[prizeId]) { 
                         document.getElementById('sound-win').play().catch(()=>{}); window.knownClaims[prizeId] = true; 
-                        const popup = document.getElementById('celebration-popup');
-                        popup.innerText = `🎉 ${claims[prizeId].winner} won ${claims[prizeId].prizeName}! 🎉`; 
-                        popup.classList.add('show'); setTimeout(() => popup.classList.remove('show'), 4000); 
+                        const popup = document.getElementById('celebration-popup'); popup.innerText = `🎉 ${claims[prizeId].winner} won ${claims[prizeId].prizeName}! 🎉`; popup.classList.add('show'); setTimeout(() => popup.classList.remove('show'), 4000); 
                     }
                     let li = document.createElement('li'); li.innerHTML = `<span>🎊 ${claims[prizeId].prizeName}</span> <span class="winner-name">${claims[prizeId].winner}</span>`; leaderboard.appendChild(li);
                 }
@@ -310,9 +288,7 @@
                                     document.querySelectorAll('#player-ticket-container .cell').forEach(c => { 
                                         if(parseInt(c.innerText) === cellVal) { c.classList.remove('blink-active'); if(myMarkedNumbers.includes(cellVal)) c.classList.add('marked'); else c.classList.remove('marked'); } 
                                     });
-                                } else {
-                                    this.classList.add('error-shake'); setTimeout(() => this.classList.remove('error-shake'), 300);
-                                }
+                                } else { this.classList.add('error-shake'); setTimeout(() => this.classList.remove('error-shake'), 300); }
                             });
                         } else { cell.classList.add('empty'); }
                         ticketDiv.appendChild(cell);
