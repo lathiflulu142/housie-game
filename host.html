@@ -5,14 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Housie - Host</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        .ticket-grid { margin-bottom: 15px; border: 2px solid #a777e3; }
-        .host-ticket-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        #ticket-count-input {
-            padding: 8px; font-weight: bold; border-radius: 8px; 
-            border: 2px solid #ccc; background: white; color: #2c3e50; cursor: pointer;
-        }
-    </style>
 </head>
 <body>
     <header>
@@ -90,10 +82,9 @@
         <div class="modal-content">
             <span class="close-btn" onclick="closeResetModal()">&times;</span>
             <h2>Game Options</h2>
-            <p>What would you like to do?</p>
             <div class="action-buttons">
                 <button class="action-btn btn-blue" onclick="resetGame()">🔄 Next Round (Keep Players)</button>
-                <button class="action-btn btn-red" onclick="destroyRoom()">🛑 End Party (Kick All & New Room)</button>
+                <button class="action-btn btn-red" onclick="destroyRoom()">🛑 End Party (Kick All)</button>
             </div>
         </div>
     </div>
@@ -108,7 +99,7 @@
         // ==========================================
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
-         const firebaseConfig = {
+        const firebaseConfig = {
     apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
     authDomain: "housieapp-3dc3e.firebaseapp.com",
     databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
@@ -125,11 +116,9 @@
         const myPlayerName = "Host 🎤";
         const currentNumberDisplay = document.getElementById('current-number');
 
-        // Clean up old memory structure if needed
         let hostState = JSON.parse(localStorage.getItem('housie_host'));
         if (hostState && hostState.myTicketNumbers && !Array.isArray(hostState.myTicketNumbers[0][0])) {
-            localStorage.removeItem('housie_host');
-            hostState = null;
+            localStorage.removeItem('housie_host'); hostState = null;
         }
         
         function generateRoomCode() {
@@ -166,28 +155,24 @@
             saveHost();
         }
 
-        // --- NEW: HOST TICKET CHANGER LOGIC ---
         function changeHostTickets() {
             if (currentDrawn !== "Go!") {
-                alert("You cannot change your ticket count after you start drawing numbers!");
+                alert("You cannot change ticket count after drawing numbers!");
                 document.getElementById('ticket-count-input').value = ticketCount;
                 return;
             }
             ticketCount = parseInt(document.getElementById('ticket-count-input').value);
-            myTicketNumbers = null; 
-            myMarkedNumbers = [];
+            myTicketNumbers = null; myMarkedNumbers = [];
             generateHostTicket();
         }
 
         const boardModal = document.getElementById('board-modal');
         const inviteModal = document.getElementById('invite-modal');
         const resetModal = document.getElementById('reset-modal');
-
         function openModal() { boardModal.style.display = "flex"; }
         function closeModal() { boardModal.style.display = "none"; }
         function openResetModal() { resetModal.style.display = "flex"; }
         function closeResetModal() { resetModal.style.display = "none"; }
-
         function openInviteModal() {
             const magicLink = window.location.href.replace("host.html", "player.html") + "?room=" + myRoomCode;
             document.getElementById('invite-code-display').innerText = myRoomCode;
@@ -195,14 +180,12 @@
             inviteModal.style.display = "flex";
         }
         function closeInviteModal() { inviteModal.style.display = "none"; }
-
         function executeShare() {
             const magicLink = window.location.href.replace("host.html", "player.html") + "?room=" + myRoomCode;
             const text = `🎉 Join my Housie Party! \nRoom Code: *${myRoomCode}*\nClick here to play: ${magicLink}`;
-            if (navigator.share) { navigator.share({ title: 'Housie Party', text: text });
-            } else { navigator.clipboard.writeText(text); alert("Invite link copied!"); }
+            if (navigator.share) navigator.share({ title: 'Housie Party', text: text });
+            else { navigator.clipboard.writeText(text); alert("Invite link copied!"); }
         }
-
         window.onclick = function(event) { 
             if (event.target == boardModal) closeModal(); 
             if (event.target == inviteModal) closeInviteModal();
@@ -222,9 +205,7 @@
             }
         });
 
-        function kickPlayer(playerId) {
-            if(confirm("Remove this player from the game?")) roomRef.child('players/' + playerId).remove();
-        }
+        function kickPlayer(playerId) { if(confirm("Remove player?")) roomRef.child('players/' + playerId).remove(); }
 
         roomRef.child('calledNumbers').on('value', (snapshot) => {
             const called = snapshot.val() || {};
@@ -251,10 +232,7 @@
 
             for(let prizeId in claims) {
                 hasWinners = true;
-                if(!knownClaims[prizeId]) {
-                    document.getElementById('sound-win').play().catch(()=>{}); 
-                    knownClaims[prizeId] = true;
-                }
+                if(!knownClaims[prizeId]) { document.getElementById('sound-win').play().catch(()=>{}); knownClaims[prizeId] = true; }
                 let li = document.createElement('li');
                 li.innerHTML = `<span>🎊 ${claims[prizeId].prizeName}</span> <span class="winner-name">${claims[prizeId].winner}</span>`;
                 leaderboard.appendChild(li);
@@ -263,54 +241,42 @@
             for(let prizeId in knownClaims) { if(!claims[prizeId]) delete knownClaims[prizeId]; }
         });
 
-        // --- HOST MULTI-TICKET ANTI-CHEAT ---
         function claimPrize(prizeId, prizeName) {
             let isValid = false;
-            
             for (let t = 0; t < myTicketNumbers.length; t++) {
                 const ticketDiv = document.getElementById(`ticket-grid-${t}`);
                 const markedCells = ticketDiv.querySelectorAll('.cell.marked');
-                
                 if(prizeId === 'jaldi' && markedCells.length >= 5) isValid = true;
                 if(prizeId === 'top' && ticketDiv.querySelectorAll('.cell.row-0.marked').length === 5) isValid = true;
                 if(prizeId === 'mid' && ticketDiv.querySelectorAll('.cell.row-1.marked').length === 5) isValid = true;
                 if(prizeId === 'bot' && ticketDiv.querySelectorAll('.cell.row-2.marked').length === 5) isValid = true;
                 if(prizeId === 'full' && markedCells.length === 15) isValid = true;
-
                 if (isValid) break;
             }
-
-            if(!isValid) { alert(`❌ You haven't completed ${prizeName} on any ticket yet!`); return; }
-            if (confirm(`Claim ${prizeName} as the Host?`)) { roomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName }); }
+            if(!isValid) { alert(`❌ You haven't completed ${prizeName} on any ticket!`); return; }
+            if (confirm(`Claim ${prizeName} as Host?`)) { roomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName }); }
         }
 
         function drawNumber() {
             if (numberBag.length === 0) return;
             const drawnNum = numberBag.splice(Math.floor(Math.random() * numberBag.length), 1)[0];
-            
             currentDrawn = drawnNum;
             currentNumberDisplay.innerText = drawnNum;
             currentNumberDisplay.style.fontSize = "60px";
-
             document.getElementById('sound-pop').play().catch(()=>{}); 
-            
             roomRef.child('latestNumber').set(drawnNum);
             roomRef.child('calledNumbers/' + drawnNum).set(true);
             saveHost();
         }
 
         function resetGame() {
-            if (!confirm("Start next round with the same Room Code and players?")) return; 
+            if (!confirm("Start next round with the same Room Code?")) return; 
             numberBag = Array.from({length: 90}, (_, i) => i + 1);
-            myTicketNumbers = null;
-            myMarkedNumbers = [];
-            currentDrawn = "Go!";
-            currentNumberDisplay.innerText = "Go!";
+            myTicketNumbers = null; myMarkedNumbers = [];
+            currentDrawn = "Go!"; currentNumberDisplay.innerText = "Go!";
             ticketCount = parseInt(document.getElementById('ticket-count-input').value);
-            
             document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called'));
             generateHostTicket();
-
             roomRef.child('resetTrigger').set(Date.now());
             roomRef.child('latestNumber').set("Ready");
             roomRef.child('calledNumbers').remove();
@@ -319,10 +285,8 @@
         }
 
         function destroyRoom() {
-            if (!confirm("WARNING: This will kick all players, delete the room, and generate a new code. Proceed?")) return;
-            roomRef.remove(); 
-            localStorage.removeItem('housie_host'); 
-            window.location.reload(); 
+            if (!confirm("WARNING: This kicks all players and deletes the room. Proceed?")) return;
+            roomRef.remove(); localStorage.removeItem('housie_host'); window.location.reload(); 
         }
 
         function setupFullBoard() {
@@ -338,7 +302,6 @@
             }
         }
 
-        // --- HOST MULTI-TICKET GENERATOR ---
         function generateHostTicket() {
             const container = document.getElementById('host-ticket-container');
             if (!container) return;
@@ -378,7 +341,6 @@
                 const ticketDiv = document.createElement('div');
                 ticketDiv.className = 'ticket-grid';
                 ticketDiv.id = `ticket-grid-${t}`;
-                
                 let ticketData = myTicketNumbers[t];
 
                 for (let row = 0; row < 3; row++) {
@@ -392,8 +354,9 @@
                             cell.innerText = cellVal;
                             if (myMarkedNumbers.includes(cellVal)) cell.classList.add('marked');
 
-                            cell.addEventListener('pointerdown', function() { 
-                                if(document.getElementById(`board-num-${this.innerText}`).classList.contains('called')) {
+                            // USING CLICK EVENT + SHAKE ANIMATION
+                            cell.addEventListener('click', function() { 
+                                if(document.getElementById(`board-num-${cellVal}`).classList.contains('called')) {
                                     this.classList.toggle('marked'); 
                                     if(this.classList.contains('marked')) {
                                         if(!myMarkedNumbers.includes(cellVal)) myMarkedNumbers.push(cellVal);
@@ -401,8 +364,18 @@
                                         myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal);
                                     }
                                     saveHost();
+                                    
+                                    // Magic Sync
+                                    document.querySelectorAll('#host-ticket-container .cell').forEach(c => {
+                                        if(parseInt(c.innerText) === cellVal) {
+                                            if(myMarkedNumbers.includes(cellVal)) c.classList.add('marked');
+                                            else c.classList.remove('marked');
+                                        }
+                                    });
                                 } else {
-                                    alert(`You haven't drawn number ${this.innerText} yet!`);
+                                    // ERROR SHAKE INSTEAD OF ALERT
+                                    this.classList.add('error-shake');
+                                    setTimeout(() => this.classList.remove('error-shake'), 300);
                                 }
                             });
                         } else {

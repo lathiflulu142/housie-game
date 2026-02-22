@@ -5,14 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Housie - Player</title>
     <link rel="stylesheet" href="style.css">
-    <style>
-        #ticket-count-input {
-            width: 80%; padding: 15px; font-size: 18px; font-weight: bold;
-            text-align: center; border: 2px solid #ccc; border-radius: 10px;
-            margin-bottom: 15px; background: white; color: #2c3e50; cursor: pointer;
-        }
-        .ticket-grid { margin-bottom: 15px; border: 2px solid #a777e3; } 
-    </style>
 </head>
 <body>
     <div id="join-screen" class="join-container">
@@ -86,7 +78,7 @@
         // ==========================================
         // 🚨 PASTE YOUR REAL FIREBASE KEYS HERE 🚨
         // ==========================================
-          const firebaseConfig = {
+        const firebaseConfig = {
     apiKey: "AIzaSyBaQyf99P3TEp34hhvPZqqPeQ9VCLSQ3N0",
     authDomain: "housieapp-3dc3e.firebaseapp.com",
     databaseURL: "https://housieapp-3dc3e-default-rtdb.firebaseio.com",
@@ -104,8 +96,7 @@
 
         let playerState = JSON.parse(localStorage.getItem('housie_player'));
         if (playerState && playerState.myTicketNumbers && !Array.isArray(playerState.myTicketNumbers[0][0])) {
-            localStorage.removeItem('housie_player');
-            playerState = null;
+            localStorage.removeItem('housie_player'); playerState = null;
         }
 
         let myRoomCode = "", myPlayerName = "", myPlayerId = "", ticketCount = 1;
@@ -122,9 +113,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const roomFromUrl = urlParams.get('room');
 
-            // --- FIXED: PERFECT MEMORY RECOVERY EVEN WITH URL LINKS ---
             if(playerState && playerState.myRoomCode) {
-                // Only load memory if the URL room matches the saved room, or if there is no URL room
                 if (!roomFromUrl || roomFromUrl === playerState.myRoomCode) {
                     document.getElementById('room-code-input').value = playerState.myRoomCode;
                     document.getElementById('player-name-input').value = playerState.myPlayerName;
@@ -137,17 +126,10 @@
                     myMarkedNumbers = playerState.myMarkedNumbers || [];
                     ticketCount = playerState.ticketCount || 1;
                     
-                    if (myTicketNumbers) {
-                        joinRoom(true); 
-                        return; // Stop here! Don't run the rest of the code!
-                    }
+                    if (myTicketNumbers) { joinRoom(true); return; }
                 }
             }
-
-            // If memory is blank, just fill in the code from the QR scan
-            if(roomFromUrl) {
-                document.getElementById('room-code-input').value = roomFromUrl;
-            }
+            if(roomFromUrl) document.getElementById('room-code-input').value = roomFromUrl;
         };
 
         function joinRoom(isRestore) {
@@ -160,11 +142,8 @@
                 if (myPlayerName === "") { alert("Enter your name!"); return; }
                 
                 myPlayerId = "player_" + Date.now();
-                myTicketNumbers = null; 
-                myMarkedNumbers = [];
-                lastResetTime = Date.now();
+                myTicketNumbers = null; myMarkedNumbers = []; lastResetTime = Date.now();
                 
-                // Clear the URL so refreshes don't get confused
                 window.history.replaceState({}, document.title, window.location.pathname);
                 savePlayer();
             }
@@ -204,13 +183,10 @@
                 const triggerTime = snapshot.val();
                 if (triggerTime && triggerTime > lastResetTime) {
                     lastResetTime = triggerTime;
-                    myTicketNumbers = null;
-                    myMarkedNumbers = [];
-                    savePlayer();
-                    
+                    myTicketNumbers = null; myMarkedNumbers = []; savePlayer();
                     document.getElementById('game-screen').style.display = 'none';
                     document.getElementById('join-screen').style.display = 'flex';
-                    alert("The Host has started a New Round! Choose your ticket count and jump back in.");
+                    alert("New Round Started! Choose your ticket count and jump back in.");
                 }
             });
 
@@ -230,10 +206,7 @@
 
                 for(let prizeId in claims) {
                     hasWinners = true;
-                    if(!knownClaims[prizeId]) {
-                        document.getElementById('sound-win').play().catch(()=>{}); 
-                        knownClaims[prizeId] = true;
-                    }
+                    if(!knownClaims[prizeId]) { document.getElementById('sound-win').play().catch(()=>{}); knownClaims[prizeId] = true; }
                     let li = document.createElement('li');
                     li.innerHTML = `<span>🎊 ${claims[prizeId].prizeName}</span> <span class="winner-name">${claims[prizeId].winner}</span>`;
                     leaderboard.appendChild(li);
@@ -252,7 +225,6 @@
 
         function claimPrize(prizeId, prizeName) {
             let isValid = false;
-            
             for (let t = 0; t < myTicketNumbers.length; t++) {
                 const ticketDiv = document.getElementById(`ticket-grid-${t}`);
                 const markedCells = ticketDiv.querySelectorAll('.cell.marked');
@@ -265,11 +237,8 @@
 
                 if (isValid) break; 
             }
-
-            if(!isValid) { alert(`❌ You haven't completed ${prizeName} on any ticket yet!`); return; }
-            if (confirm(`Claim ${prizeName}?`)) {
-                currentRoomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName });
-            }
+            if(!isValid) { alert(`❌ You haven't completed ${prizeName} on any ticket!`); return; }
+            if (confirm(`Claim ${prizeName}?`)) { currentRoomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName }); }
         }
 
         function generatePlayerTicket() {
@@ -297,16 +266,10 @@
                         let possibleNumbers = [];
                         for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
                         let selectedForCol = [];
-                        
-                        for (let n = 0; n < numbersNeeded; n++) {
-                            selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
-                        }
-                        
+                        for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
                         selectedForCol.sort((a, b) => a - b); 
                         let numIndex = 0;
-                        for (let row = 0; row < 3; row++) {
-                            singleTicket[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
-                        }
+                        for (let row = 0; row < 3; row++) singleTicket[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
                     }
                     myTicketNumbers.push(singleTicket); 
                 }
@@ -317,7 +280,6 @@
                 const ticketDiv = document.createElement('div');
                 ticketDiv.className = 'ticket-grid';
                 ticketDiv.id = `ticket-grid-${t}`;
-                
                 let ticketData = myTicketNumbers[t];
 
                 for (let row = 0; row < 3; row++) {
@@ -331,27 +293,28 @@
                             cell.innerText = cellVal;
                             if (myMarkedNumbers.includes(cellVal)) cell.classList.add('marked');
 
-                            cell.addEventListener('pointerdown', function() { 
+                            // USING CLICK EVENT + SHAKE ANIMATION
+                            cell.addEventListener('click', function() { 
                                 if(document.getElementById(`board-num-${cellVal}`).classList.contains('called')) {
-                                    
-                                    // --- FIXED: MAGIC SYNC FOR MULTIPLE TICKETS ---
-                                    if(myMarkedNumbers.includes(cellVal)) {
-                                        myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal);
+                                    this.classList.toggle('marked'); 
+                                    if(this.classList.contains('marked')) {
+                                        if(!myMarkedNumbers.includes(cellVal)) myMarkedNumbers.push(cellVal);
                                     } else {
-                                        myMarkedNumbers.push(cellVal);
+                                        myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal);
                                     }
                                     savePlayer();
 
-                                    // Instantly update EVERY matching number across ALL tickets visually
-                                    document.querySelectorAll('.cell').forEach(c => {
+                                    // Magic Sync
+                                    document.querySelectorAll('#player-ticket-container .cell').forEach(c => {
                                         if(parseInt(c.innerText) === cellVal) {
                                             if(myMarkedNumbers.includes(cellVal)) c.classList.add('marked');
                                             else c.classList.remove('marked');
                                         }
                                     });
-                                    
                                 } else {
-                                    alert(`Number ${cellVal} hasn't been called yet!`);
+                                    // ERROR SHAKE INSTEAD OF ALERT
+                                    this.classList.add('error-shake');
+                                    setTimeout(() => this.classList.remove('error-shake'), 300);
                                 }
                             });
                         } else {
