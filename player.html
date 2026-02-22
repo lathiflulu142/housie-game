@@ -13,13 +13,11 @@
             <p>Enter the code and choose your tickets!</p>
             <input type="text" id="room-code-input" inputmode="numeric" pattern="[0-9]*" placeholder="Code (e.g. 1234)" maxlength="4" autocomplete="off">
             <input type="text" id="player-name-input" placeholder="Your Name" autocomplete="off" maxlength="15">
-            
             <select id="ticket-count-input">
                 <option value="1">Play 1 Ticket</option>
                 <option value="2">Play 2 Tickets</option>
                 <option value="3">Play 3 Tickets</option>
             </select>
-
             <button id="join-btn" onclick="joinRoom(false)">Enter Game</button>
         </div>
     </div>
@@ -31,6 +29,10 @@
                 <div class="room-badge">Room: <span id="player-room-display"></span></div>
             </div>
             <div class="header-actions">
+                <select id="theme-selector" onchange="changeTheme()" class="theme-btn">
+                    <option value="default">🌞 Light</option>
+                    <option value="theme-dark">🌙 Dark</option>
+                </select>
                 <button id="show-board-btn" onclick="openModal()">🔢 Called</button>
             </div>
         </header>
@@ -51,22 +53,18 @@
             </div>
 
             <div class="claims-container" id="claims-box">
-                <button id="btn-jaldi" class="claim-btn" onclick="claimPrize('jaldi', 'Jaldi 5')">Jaldi 5</button>
-                <button id="btn-top" class="claim-btn" onclick="claimPrize('top', 'Top Line')">Top Line</button>
-                <button id="btn-mid" class="claim-btn" onclick="claimPrize('mid', 'Middle Line')">Mid Line</button>
-                <button id="btn-bot" class="claim-btn" onclick="claimPrize('bot', 'Bottom Line')">Bot Line</button>
-                <button id="btn-full" class="claim-btn full-house" onclick="claimPrize('full', 'Full House')">🎉 FULL HOUSE 🎉</button>
+                <button id="btn-jaldi" class="claim-btn" onclick="claimPrize('jaldi', 'Jaldi 5', this)">Jaldi 5</button>
+                <button id="btn-top" class="claim-btn" onclick="claimPrize('top', 'Top Line', this)">Top Line</button>
+                <button id="btn-mid" class="claim-btn" onclick="claimPrize('mid', 'Middle Line', this)">Mid Line</button>
+                <button id="btn-bot" class="claim-btn" onclick="claimPrize('bot', 'Bottom Line', this)">Bot Line</button>
+                <button id="btn-full" class="claim-btn full-house" onclick="claimPrize('full', 'Full House', this)">🎉 FULL HOUSE 🎉</button>
             </div>
         </main>
     </div>
 
-    <div id="board-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal()">&times;</span>
-            <h2>Numbers Called So Far</h2>
-            <div id="full-board" class="board-grid"></div>
-        </div>
-    </div>
+    <div id="board-modal" class="modal"><div class="modal-content"><span class="close-btn" onclick="closeModal()">&times;</span><h2>Numbers Called So Far</h2><div id="full-board" class="board-grid"></div></div></div>
+
+    <div id="celebration-popup"></div>
 
     <audio id="sound-pop" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg" preload="auto"></audio>
     <audio id="sound-win" src="https://actions.google.com/sounds/v1/crowds/party_horn.ogg" preload="auto"></audio>
@@ -94,6 +92,19 @@
         const db = firebase.database();
         let currentRoomRef = null; 
 
+        // --- NEW: THEME LOGIC ---
+        let savedTheme = localStorage.getItem('housie_theme') || 'default';
+        function applyTheme(theme) {
+            document.body.className = (theme === 'default') ? '' : theme;
+            document.getElementById('theme-selector').value = theme;
+        }
+        function changeTheme() {
+            let selected = document.getElementById('theme-selector').value;
+            localStorage.setItem('housie_theme', selected);
+            applyTheme(selected);
+        }
+        applyTheme(savedTheme);
+
         let playerState = JSON.parse(localStorage.getItem('housie_player'));
         if (playerState && playerState.myTicketNumbers && !Array.isArray(playerState.myTicketNumbers[0][0])) {
             localStorage.removeItem('housie_player'); playerState = null;
@@ -103,29 +114,15 @@
         let myTicketNumbers = null, myMarkedNumbers = [];
         let lastResetTime = playerState ? playerState.lastResetTime : 0;
 
-        function savePlayer() {
-            localStorage.setItem('housie_player', JSON.stringify({
-                myRoomCode, myPlayerName, myPlayerId, myTicketNumbers, myMarkedNumbers, lastResetTime, ticketCount
-            }));
-        }
+        function savePlayer() { localStorage.setItem('housie_player', JSON.stringify({ myRoomCode, myPlayerName, myPlayerId, myTicketNumbers, myMarkedNumbers, lastResetTime, ticketCount })); }
 
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const roomFromUrl = urlParams.get('room');
-
             if(playerState && playerState.myRoomCode) {
                 if (!roomFromUrl || roomFromUrl === playerState.myRoomCode) {
-                    document.getElementById('room-code-input').value = playerState.myRoomCode;
-                    document.getElementById('player-name-input').value = playerState.myPlayerName;
-                    document.getElementById('ticket-count-input').value = playerState.ticketCount || 1;
-                    
-                    myRoomCode = playerState.myRoomCode;
-                    myPlayerName = playerState.myPlayerName;
-                    myPlayerId = playerState.myPlayerId;
-                    myTicketNumbers = playerState.myTicketNumbers;
-                    myMarkedNumbers = playerState.myMarkedNumbers || [];
-                    ticketCount = playerState.ticketCount || 1;
-                    
+                    document.getElementById('room-code-input').value = playerState.myRoomCode; document.getElementById('player-name-input').value = playerState.myPlayerName; document.getElementById('ticket-count-input').value = playerState.ticketCount || 1;
+                    myRoomCode = playerState.myRoomCode; myPlayerName = playerState.myPlayerName; myPlayerId = playerState.myPlayerId; myTicketNumbers = playerState.myTicketNumbers; myMarkedNumbers = playerState.myMarkedNumbers || []; ticketCount = playerState.ticketCount || 1;
                     if (myTicketNumbers) { joinRoom(true); return; }
                 }
             }
@@ -134,141 +131,103 @@
 
         function joinRoom(isRestore) {
             if(!isRestore) {
-                myRoomCode = document.getElementById('room-code-input').value;
-                myPlayerName = document.getElementById('player-name-input').value.trim();
-                ticketCount = parseInt(document.getElementById('ticket-count-input').value);
-
+                myRoomCode = document.getElementById('room-code-input').value; myPlayerName = document.getElementById('player-name-input').value.trim(); ticketCount = parseInt(document.getElementById('ticket-count-input').value);
                 if (myRoomCode.length !== 4 || isNaN(myRoomCode)) { alert("Enter a 4-digit Code."); return; }
                 if (myPlayerName === "") { alert("Enter your name!"); return; }
-                
-                myPlayerId = "player_" + Date.now();
-                myTicketNumbers = null; myMarkedNumbers = []; lastResetTime = Date.now();
-                
-                window.history.replaceState({}, document.title, window.location.pathname);
-                savePlayer();
+                myPlayerId = "player_" + Date.now(); myTicketNumbers = null; myMarkedNumbers = []; lastResetTime = Date.now();
+                window.history.replaceState({}, document.title, window.location.pathname); savePlayer();
             }
 
             currentRoomRef = db.ref('rooms/' + myRoomCode);
             const myPlayerRef = currentRoomRef.child('players/' + myPlayerId);
-
-            myPlayerRef.set({ name: myPlayerName }); 
-            myPlayerRef.onDisconnect().remove(); 
+            myPlayerRef.set({ name: myPlayerName }); myPlayerRef.onDisconnect().remove(); 
 
             myPlayerRef.on('value', (snapshot) => {
                 if (snapshot.val() === null && document.getElementById('game-screen').style.display === 'block') {
-                    alert("The Host has ended the party or removed you from the room.");
-                    localStorage.removeItem('housie_player');
-                    window.location.href = window.location.pathname; 
+                    alert("The Host ended the party or removed you."); localStorage.removeItem('housie_player'); window.location.href = window.location.pathname; 
                 }
             });
 
-            currentRoomRef.child('latestNumber').on('value', (snapshot) => {
-                const num = snapshot.val();
-                if (num && num !== "Ready") {
-                    document.getElementById('latest-called-num').innerText = num;
-                    document.getElementById('sound-pop').play().catch(()=>{}); 
-                }
-            });
+            currentRoomRef.child('latestNumber').on('value', (snapshot) => { const num = snapshot.val(); if (num && num !== "Ready") { document.getElementById('latest-called-num').innerText = num; document.getElementById('sound-pop').play().catch(()=>{}); } });
 
             currentRoomRef.child('calledNumbers').on('value', (snapshot) => {
-                const called = snapshot.val() || {};
-                document.querySelectorAll('.board-cell').forEach(c => c.classList.remove('called'));
-                for(let num in called) {
-                    let cell = document.getElementById(`board-num-${num}`);
-                    if(cell) cell.classList.add('called');
-                }
+                const called = snapshot.val() || {}; document.querySelectorAll('.board-cell').forEach(c => c.classList.remove('called'));
+                for(let num in called) { let cell = document.getElementById(`board-num-${num}`); if(cell) cell.classList.add('called'); }
             });
 
             currentRoomRef.child('resetTrigger').on('value', (snapshot) => {
                 const triggerTime = snapshot.val();
                 if (triggerTime && triggerTime > lastResetTime) {
-                    lastResetTime = triggerTime;
-                    myTicketNumbers = null; myMarkedNumbers = []; savePlayer();
-                    document.getElementById('game-screen').style.display = 'none';
-                    document.getElementById('join-screen').style.display = 'flex';
-                    alert("New Round Started! Choose your ticket count and jump back in.");
+                    lastResetTime = triggerTime; myTicketNumbers = null; myMarkedNumbers = []; savePlayer();
+                    document.getElementById('game-screen').style.display = 'none'; document.getElementById('join-screen').style.display = 'flex';
+                    alert("New Round Started! Choose tickets and jump back in.");
                 }
             });
 
+        // --- NEW: AUTO-VERIFY CELEBRATION LISTENER ---
+        function showCelebration(msg) {
+            const popup = document.getElementById('celebration-popup');
+            popup.innerText = msg;
+            popup.classList.add('show');
+            setTimeout(() => popup.classList.remove('show'), 4000); 
+        }
+
             let knownClaims = {};
             currentRoomRef.child('claims').on('value', (snapshot) => {
-                const claims = snapshot.val() || {};
-                const leaderboard = document.getElementById('winners-list');
-                const leaderboardBox = document.getElementById('leaderboard-box');
-                leaderboard.innerHTML = '';
-                let hasWinners = false;
-                
+                const claims = snapshot.val() || {}; const leaderboard = document.getElementById('winners-list'); const leaderboardBox = document.getElementById('leaderboard-box'); leaderboard.innerHTML = ''; let hasWinners = false;
                 const prizeList = ['jaldi', 'top', 'mid', 'bot', 'full'];
-                prizeList.forEach(id => {
-                    const btn = document.getElementById('btn-' + id);
-                    if (btn) btn.style.display = claims[id] ? 'none' : 'inline-block';
-                });
+                prizeList.forEach(id => { const btn = document.getElementById('btn-' + id); if (btn) btn.style.display = claims[id] ? 'none' : 'inline-block'; });
 
                 for(let prizeId in claims) {
                     hasWinners = true;
-                    if(!knownClaims[prizeId]) { document.getElementById('sound-win').play().catch(()=>{}); knownClaims[prizeId] = true; }
-                    let li = document.createElement('li');
-                    li.innerHTML = `<span>🎊 ${claims[prizeId].prizeName}</span> <span class="winner-name">${claims[prizeId].winner}</span>`;
-                    leaderboard.appendChild(li);
+                    if(!knownClaims[prizeId]) { 
+                        document.getElementById('sound-win').play().catch(()=>{}); 
+                        knownClaims[prizeId] = true; 
+                        // INSTANT BIG POPUP
+                        showCelebration(`🎉 ${claims[prizeId].winner} claimed ${claims[prizeId].prizeName}! 🎉`);
+                    }
+                    let li = document.createElement('li'); li.innerHTML = `<span>🎊 ${claims[prizeId].prizeName}</span> <span class="winner-name">${claims[prizeId].winner}</span>`; leaderboard.appendChild(li);
                 }
-                
                 leaderboardBox.style.display = hasWinners ? "block" : "none";
                 for(let prizeId in knownClaims) { if(!claims[prizeId]) delete knownClaims[prizeId]; }
             });
 
-            document.getElementById('join-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'block';
-            document.getElementById('player-room-display').innerText = myRoomCode;
-
-            generatePlayerTicket();
+            document.getElementById('join-screen').style.display = 'none'; document.getElementById('game-screen').style.display = 'block'; document.getElementById('player-room-display').innerText = myRoomCode; generatePlayerTicket();
         }
 
-        function claimPrize(prizeId, prizeName) {
+        // --- NEW: AUTO-VERIFY CLAIM LOGIC ---
+        function claimPrize(prizeId, prizeName, btnElement) {
             let isValid = false;
             for (let t = 0; t < myTicketNumbers.length; t++) {
-                const ticketDiv = document.getElementById(`ticket-grid-${t}`);
-                const markedCells = ticketDiv.querySelectorAll('.cell.marked');
-                
+                const ticketDiv = document.getElementById(`ticket-grid-${t}`); const markedCells = ticketDiv.querySelectorAll('.cell.marked');
                 if(prizeId === 'jaldi' && markedCells.length >= 5) isValid = true;
                 if(prizeId === 'top' && ticketDiv.querySelectorAll('.cell.row-0.marked').length === 5) isValid = true;
                 if(prizeId === 'mid' && ticketDiv.querySelectorAll('.cell.row-1.marked').length === 5) isValid = true;
                 if(prizeId === 'bot' && ticketDiv.querySelectorAll('.cell.row-2.marked').length === 5) isValid = true;
                 if(prizeId === 'full' && markedCells.length === 15) isValid = true;
-
                 if (isValid) break; 
             }
-            if(!isValid) { alert(`❌ You haven't completed ${prizeName} on any ticket!`); return; }
-            if (confirm(`Claim ${prizeName}?`)) { currentRoomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName }); }
+            if(!isValid) { 
+                btnElement.classList.add('error-shake');
+                setTimeout(() => btnElement.classList.remove('error-shake'), 300);
+                return; 
+            }
+            // NO CONFIRM BOX! Auto write.
+            currentRoomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName });
         }
 
         function generatePlayerTicket() {
-            const container = document.getElementById('player-ticket-container');
-            if (!container) return;
-            container.innerHTML = ''; 
-            
+            const container = document.getElementById('player-ticket-container'); if (!container) return; container.innerHTML = ''; 
             if (!myTicketNumbers) {
                 myTicketNumbers = [];
-                const ticketLayouts = [
-                    [ [1, 0, 1, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1, 0, 1] ],
-                    [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 0, 1, 1] ],
-                    [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ],
-                    [ [0, 1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 1, 0, 1, 0, 1, 1, 0] ],
-                    [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 1, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 1, 1, 0] ]
-                ];
-
+                const ticketLayouts = [ [ [1, 0, 1, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1, 0, 1] ], [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 0, 1, 1] ], [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ], [ [0, 1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 1, 0, 1, 0, 1, 1, 0] ], [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 1, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 1, 1, 0] ] ];
                 for (let t = 0; t < ticketCount; t++) {
-                    let singleTicket = [[], [], []];
-                    const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
-                    const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
-
+                    let singleTicket = [[], [], []]; const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)]; const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
                     for (let col = 0; col < 9; col++) {
-                        let numbersNeeded = (ticketPattern[0][col] + ticketPattern[1][col] + ticketPattern[2][col]);
-                        let possibleNumbers = [];
+                        let numbersNeeded = (ticketPattern[0][col] + ticketPattern[1][col] + ticketPattern[2][col]); let possibleNumbers = [];
                         for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
-                        let selectedForCol = [];
-                        for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
-                        selectedForCol.sort((a, b) => a - b); 
-                        let numIndex = 0;
+                        let selectedForCol = []; for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
+                        selectedForCol.sort((a, b) => a - b); let numIndex = 0;
                         for (let row = 0; row < 3; row++) singleTicket[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
                     }
                     myTicketNumbers.push(singleTicket); 
@@ -277,49 +236,23 @@
             }
 
             for (let t = 0; t < myTicketNumbers.length; t++) {
-                const ticketDiv = document.createElement('div');
-                ticketDiv.className = 'ticket-grid';
-                ticketDiv.id = `ticket-grid-${t}`;
-                let ticketData = myTicketNumbers[t];
-
+                const ticketDiv = document.createElement('div'); ticketDiv.className = 'ticket-grid'; ticketDiv.id = `ticket-grid-${t}`; let ticketData = myTicketNumbers[t];
                 for (let row = 0; row < 3; row++) {
                     for (let col = 0; col < 9; col++) {
-                        const cell = document.createElement('div');
-                        cell.classList.add('cell');
-                        cell.classList.add(`row-${row}`);
-                        let cellVal = ticketData[row][col];
-
+                        const cell = document.createElement('div'); cell.classList.add('cell'); cell.classList.add(`row-${row}`); let cellVal = ticketData[row][col];
                         if (cellVal !== null) {
-                            cell.innerText = cellVal;
-                            if (myMarkedNumbers.includes(cellVal)) cell.classList.add('marked');
-
-                            // USING CLICK EVENT + SHAKE ANIMATION
+                            cell.innerText = cellVal; if (myMarkedNumbers.includes(cellVal)) cell.classList.add('marked');
                             cell.addEventListener('click', function() { 
                                 if(document.getElementById(`board-num-${cellVal}`).classList.contains('called')) {
                                     this.classList.toggle('marked'); 
-                                    if(this.classList.contains('marked')) {
-                                        if(!myMarkedNumbers.includes(cellVal)) myMarkedNumbers.push(cellVal);
-                                    } else {
-                                        myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal);
-                                    }
+                                    if(this.classList.contains('marked')) { if(!myMarkedNumbers.includes(cellVal)) myMarkedNumbers.push(cellVal); } else { myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal); }
                                     savePlayer();
-
-                                    // Magic Sync
-                                    document.querySelectorAll('#player-ticket-container .cell').forEach(c => {
-                                        if(parseInt(c.innerText) === cellVal) {
-                                            if(myMarkedNumbers.includes(cellVal)) c.classList.add('marked');
-                                            else c.classList.remove('marked');
-                                        }
-                                    });
+                                    document.querySelectorAll('#player-ticket-container .cell').forEach(c => { if(parseInt(c.innerText) === cellVal) { if(myMarkedNumbers.includes(cellVal)) c.classList.add('marked'); else c.classList.remove('marked'); } });
                                 } else {
-                                    // ERROR SHAKE INSTEAD OF ALERT
-                                    this.classList.add('error-shake');
-                                    setTimeout(() => this.classList.remove('error-shake'), 300);
+                                    this.classList.add('error-shake'); setTimeout(() => this.classList.remove('error-shake'), 300);
                                 }
                             });
-                        } else {
-                            cell.classList.add('empty');
-                        }
+                        } else { cell.classList.add('empty'); }
                         ticketDiv.appendChild(cell);
                     }
                 }
@@ -327,24 +260,9 @@
             }
         }
 
-        function setupFullBoard() {
-            const fullBoard = document.getElementById('full-board');
-            if (!fullBoard) return;
-            fullBoard.innerHTML = ''; 
-            for (let i = 1; i <= 90; i++) {
-                const cell = document.createElement('div');
-                cell.classList.add('board-cell');
-                cell.id = `board-num-${i}`;
-                cell.innerText = i;
-                fullBoard.appendChild(cell);
-            }
-        }
-
-        const modal = document.getElementById('board-modal');
-        function openModal() { modal.style.display = "flex"; }
-        function closeModal() { modal.style.display = "none"; }
+        function setupFullBoard() { const fullBoard = document.getElementById('full-board'); if (!fullBoard) return; fullBoard.innerHTML = ''; for (let i = 1; i <= 90; i++) { const cell = document.createElement('div'); cell.classList.add('board-cell'); cell.id = `board-num-${i}`; cell.innerText = i; fullBoard.appendChild(cell); } }
+        const modal = document.getElementById('board-modal'); function openModal() { modal.style.display = "flex"; } function closeModal() { modal.style.display = "none"; }
         window.onclick = function(event) { if (event.target == modal) closeModal(); }
-
         setupFullBoard();
     </script>
 </body>

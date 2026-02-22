@@ -11,9 +11,12 @@
         <div>
             <h1>🎤 Housie</h1>
             <div class="room-badge">Room Code: <span id="room-code-display">----</span></div>
-            <div class="player-count-badge">👥 Players: <span id="player-count-display">0</span></div>
         </div>
         <div class="header-actions">
+            <select id="theme-selector" onchange="changeTheme()" class="theme-btn">
+                <option value="default">🌞 Light</option>
+                <option value="theme-dark">🌙 Dark</option>
+            </select>
             <button class="share-btn" onclick="openInviteModal()">📲 Invite</button>
             <button id="show-board-btn" onclick="openModal()">🔢 Board</button>
             <button id="reset-btn" onclick="openResetModal()">🔄 Reset</button>
@@ -44,50 +47,24 @@
         </div>
 
         <div class="claims-container" id="claims-box">
-            <button id="btn-jaldi" class="claim-btn" onclick="claimPrize('jaldi', 'Jaldi 5')">Jaldi 5</button>
-            <button id="btn-top" class="claim-btn" onclick="claimPrize('top', 'Top Line')">Top Line</button>
-            <button id="btn-mid" class="claim-btn" onclick="claimPrize('mid', 'Middle Line')">Mid Line</button>
-            <button id="btn-bot" class="claim-btn" onclick="claimPrize('bot', 'Bottom Line')">Bot Line</button>
-            <button id="btn-full" class="claim-btn full-house" onclick="claimPrize('full', 'Full House')">🎉 FULL HOUSE 🎉</button>
+            <button id="btn-jaldi" class="claim-btn" onclick="claimPrize('jaldi', 'Jaldi 5', this)">Jaldi 5</button>
+            <button id="btn-top" class="claim-btn" onclick="claimPrize('top', 'Top Line', this)">Top Line</button>
+            <button id="btn-mid" class="claim-btn" onclick="claimPrize('mid', 'Middle Line', this)">Mid Line</button>
+            <button id="btn-bot" class="claim-btn" onclick="claimPrize('bot', 'Bottom Line', this)">Bot Line</button>
+            <button id="btn-full" class="claim-btn full-house" onclick="claimPrize('full', 'Full House', this)">🎉 FULL HOUSE 🎉</button>
         </div>
 
         <div class="host-player-list">
-            <h2>Live Players</h2>
+            <h2>Live Players: <span id="player-count-display">0</span></h2>
             <ul id="active-players"></ul>
         </div>
     </main>
 
-    <div id="board-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal()">&times;</span>
-            <h2>Called Numbers</h2>
-            <div id="full-board" class="board-grid"></div>
-        </div>
-    </div>
-
-    <div id="invite-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeInviteModal()">&times;</span>
-            <h2>Invite Players</h2>
-            <p>Scan to auto-join Room:</p>
-            <div id="invite-code-display">----</div>
-            <img id="qr-code-img" src="" alt="QR Code" width="180">
-            <div class="action-buttons">
-                <button class="action-btn btn-blue" onclick="executeShare()">💬 Share Link via WhatsApp</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="reset-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeResetModal()">&times;</span>
-            <h2>Game Options</h2>
-            <div class="action-buttons">
-                <button class="action-btn btn-blue" onclick="resetGame()">🔄 Next Round (Keep Players)</button>
-                <button class="action-btn btn-red" onclick="destroyRoom()">🛑 End Party (Kick All)</button>
-            </div>
-        </div>
-    </div>
+    <div id="board-modal" class="modal"><div class="modal-content"><span class="close-btn" onclick="closeModal()">&times;</span><h2>Called Numbers</h2><div id="full-board" class="board-grid"></div></div></div>
+    <div id="invite-modal" class="modal"><div class="modal-content"><span class="close-btn" onclick="closeInviteModal()">&times;</span><h2>Invite Players</h2><p>Scan to auto-join Room:</p><div id="invite-code-display">----</div><img id="qr-code-img" src="" alt="QR Code" width="180"><div class="action-buttons"><button class="action-btn btn-blue" onclick="executeShare()">💬 Share Link via WhatsApp</button></div></div></div>
+    <div id="reset-modal" class="modal"><div class="modal-content"><span class="close-btn" onclick="closeResetModal()">&times;</span><h2>Game Options</h2><div class="action-buttons"><button class="action-btn btn-blue" onclick="resetGame()">🔄 Next Round (Keep Players)</button><button class="action-btn btn-red" onclick="destroyRoom()">🛑 End Party (Kick All)</button></div></div></div>
+    
+    <div id="celebration-popup"></div>
 
     <audio id="sound-pop" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg" preload="auto"></audio>
     <audio id="sound-win" src="https://actions.google.com/sounds/v1/crowds/party_horn.ogg" preload="auto"></audio>
@@ -116,16 +93,24 @@
         const myPlayerName = "Host 🎤";
         const currentNumberDisplay = document.getElementById('current-number');
 
+        // --- NEW: THEME LOGIC ---
+        let savedTheme = localStorage.getItem('housie_theme') || 'default';
+        function applyTheme(theme) {
+            document.body.className = (theme === 'default') ? '' : theme;
+            document.getElementById('theme-selector').value = theme;
+        }
+        function changeTheme() {
+            let selected = document.getElementById('theme-selector').value;
+            localStorage.setItem('housie_theme', selected);
+            applyTheme(selected);
+        }
+        applyTheme(savedTheme);
+
         let hostState = JSON.parse(localStorage.getItem('housie_host'));
         if (hostState && hostState.myTicketNumbers && !Array.isArray(hostState.myTicketNumbers[0][0])) {
             localStorage.removeItem('housie_host'); hostState = null;
         }
-        
-        function generateRoomCode() {
-            let code = '';
-            for (let i = 0; i < 4; i++) code += '0123456789'.charAt(Math.floor(Math.random() * 10));
-            return code;
-        }
+        function generateRoomCode() { let code = ''; for (let i = 0; i < 4; i++) code += '0123456789'.charAt(Math.floor(Math.random() * 10)); return code; }
 
         const myRoomCode = hostState ? hostState.myRoomCode : generateRoomCode();
         let numberBag = hostState ? hostState.numberBag : Array.from({length: 90}, (_, i) => i + 1);
@@ -139,14 +124,9 @@
         currentNumberDisplay.innerText = currentDrawn;
         if(currentDrawn !== "Go!") currentNumberDisplay.style.fontSize = "60px";
 
-        function saveHost() {
-            localStorage.setItem('housie_host', JSON.stringify({
-                myRoomCode, numberBag, myTicketNumbers, myMarkedNumbers, currentDrawn, ticketCount
-            }));
-        }
+        function saveHost() { localStorage.setItem('housie_host', JSON.stringify({ myRoomCode, numberBag, myTicketNumbers, myMarkedNumbers, currentDrawn, ticketCount })); }
 
         const roomRef = db.ref('rooms/' + myRoomCode);
-        
         if (!hostState) {
             roomRef.child('latestNumber').set("Ready");
             roomRef.child('resetTrigger').set(Date.now());
@@ -156,23 +136,13 @@
         }
 
         function changeHostTickets() {
-            if (currentDrawn !== "Go!") {
-                alert("You cannot change ticket count after drawing numbers!");
-                document.getElementById('ticket-count-input').value = ticketCount;
-                return;
-            }
-            ticketCount = parseInt(document.getElementById('ticket-count-input').value);
-            myTicketNumbers = null; myMarkedNumbers = [];
-            generateHostTicket();
+            if (currentDrawn !== "Go!") { alert("Cannot change tickets after drawing numbers!"); document.getElementById('ticket-count-input').value = ticketCount; return; }
+            ticketCount = parseInt(document.getElementById('ticket-count-input').value); myTicketNumbers = null; myMarkedNumbers = []; generateHostTicket();
         }
 
-        const boardModal = document.getElementById('board-modal');
-        const inviteModal = document.getElementById('invite-modal');
-        const resetModal = document.getElementById('reset-modal');
-        function openModal() { boardModal.style.display = "flex"; }
-        function closeModal() { boardModal.style.display = "none"; }
-        function openResetModal() { resetModal.style.display = "flex"; }
-        function closeResetModal() { resetModal.style.display = "none"; }
+        const boardModal = document.getElementById('board-modal'); const inviteModal = document.getElementById('invite-modal'); const resetModal = document.getElementById('reset-modal');
+        function openModal() { boardModal.style.display = "flex"; } function closeModal() { boardModal.style.display = "none"; }
+        function openResetModal() { resetModal.style.display = "flex"; } function closeResetModal() { resetModal.style.display = "none"; }
         function openInviteModal() {
             const magicLink = window.location.href.replace("host.html", "player.html") + "?room=" + myRoomCode;
             document.getElementById('invite-code-display').innerText = myRoomCode;
@@ -186,20 +156,14 @@
             if (navigator.share) navigator.share({ title: 'Housie Party', text: text });
             else { navigator.clipboard.writeText(text); alert("Invite link copied!"); }
         }
-        window.onclick = function(event) { 
-            if (event.target == boardModal) closeModal(); 
-            if (event.target == inviteModal) closeInviteModal();
-            if (event.target == resetModal) closeResetModal();
-        }
+        window.onclick = function(event) { if (event.target == boardModal) closeModal(); if (event.target == inviteModal) closeInviteModal(); if (event.target == resetModal) closeResetModal(); }
 
         roomRef.child('players').on('value', (snapshot) => {
             const players = snapshot.val() || {};
             document.getElementById('player-count-display').innerText = Object.keys(players).length;
-            const playerList = document.getElementById('active-players');
-            playerList.innerHTML = ''; 
+            const playerList = document.getElementById('active-players'); playerList.innerHTML = ''; 
             for (let playerId in players) {
-                let li = document.createElement('li');
-                li.className = 'player-item';
+                let li = document.createElement('li'); li.className = 'player-item';
                 li.innerHTML = `<span>${players[playerId].name}</span> <button class="kick-btn" onclick="kickPlayer('${playerId}')">Kick</button>`;
                 playerList.appendChild(li);
             }
@@ -210,29 +174,35 @@
         roomRef.child('calledNumbers').on('value', (snapshot) => {
             const called = snapshot.val() || {};
             document.querySelectorAll('.board-cell').forEach(c => c.classList.remove('called'));
-            for(let num in called) {
-                let cell = document.getElementById(`board-num-${num}`);
-                if(cell) cell.classList.add('called');
-            }
+            for(let num in called) { let cell = document.getElementById(`board-num-${num}`); if(cell) cell.classList.add('called'); }
         });
+
+        // --- NEW: AUTO-VERIFY CELEBRATION LISTENER ---
+        function showCelebration(msg) {
+            const popup = document.getElementById('celebration-popup');
+            popup.innerText = msg;
+            popup.classList.add('show');
+            setTimeout(() => popup.classList.remove('show'), 4000); // Hides after 4s
+        }
 
         let knownClaims = {};
         roomRef.child('claims').on('value', (snapshot) => {
             const claims = snapshot.val() || {};
             const leaderboard = document.getElementById('winners-list');
             const leaderboardBox = document.getElementById('leaderboard-box');
-            leaderboard.innerHTML = '';
-            let hasWinners = false;
+            leaderboard.innerHTML = ''; let hasWinners = false;
 
             const prizeList = ['jaldi', 'top', 'mid', 'bot', 'full'];
-            prizeList.forEach(id => {
-                const btn = document.getElementById('btn-' + id);
-                if (btn) btn.style.display = claims[id] ? 'none' : 'inline-block';
-            });
+            prizeList.forEach(id => { const btn = document.getElementById('btn-' + id); if (btn) btn.style.display = claims[id] ? 'none' : 'inline-block'; });
 
             for(let prizeId in claims) {
                 hasWinners = true;
-                if(!knownClaims[prizeId]) { document.getElementById('sound-win').play().catch(()=>{}); knownClaims[prizeId] = true; }
+                if(!knownClaims[prizeId]) { 
+                    document.getElementById('sound-win').play().catch(()=>{}); 
+                    knownClaims[prizeId] = true; 
+                    // INSTANT BIG POPUP INSTEAD OF ALERT
+                    showCelebration(`🎉 ${claims[prizeId].winner} claimed ${claims[prizeId].prizeName}! 🎉`);
+                }
                 let li = document.createElement('li');
                 li.innerHTML = `<span>🎊 ${claims[prizeId].prizeName}</span> <span class="winner-name">${claims[prizeId].winner}</span>`;
                 leaderboard.appendChild(li);
@@ -241,7 +211,8 @@
             for(let prizeId in knownClaims) { if(!claims[prizeId]) delete knownClaims[prizeId]; }
         });
 
-        function claimPrize(prizeId, prizeName) {
+        // --- NEW: AUTO-VERIFY CLAIM LOGIC ---
+        function claimPrize(prizeId, prizeName, btnElement) {
             let isValid = false;
             for (let t = 0; t < myTicketNumbers.length; t++) {
                 const ticketDiv = document.getElementById(`ticket-grid-${t}`);
@@ -253,83 +224,52 @@
                 if(prizeId === 'full' && markedCells.length === 15) isValid = true;
                 if (isValid) break;
             }
-            if(!isValid) { alert(`❌ You haven't completed ${prizeName} on any ticket!`); return; }
-            if (confirm(`Claim ${prizeName} as Host?`)) { roomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName }); }
+            if(!isValid) { 
+                // ERROR SHAKE INSTEAD OF POPUP
+                btnElement.classList.add('error-shake');
+                setTimeout(() => btnElement.classList.remove('error-shake'), 300);
+                return; 
+            }
+            // NO CONFIRM BOX! Instant Auto-Verify
+            roomRef.child('claims/' + prizeId).set({ winner: myPlayerName, prizeName: prizeName }); 
         }
 
         function drawNumber() {
             if (numberBag.length === 0) return;
             const drawnNum = numberBag.splice(Math.floor(Math.random() * numberBag.length), 1)[0];
-            currentDrawn = drawnNum;
-            currentNumberDisplay.innerText = drawnNum;
-            currentNumberDisplay.style.fontSize = "60px";
+            currentDrawn = drawnNum; currentNumberDisplay.innerText = drawnNum; currentNumberDisplay.style.fontSize = "60px";
             document.getElementById('sound-pop').play().catch(()=>{}); 
-            roomRef.child('latestNumber').set(drawnNum);
-            roomRef.child('calledNumbers/' + drawnNum).set(true);
-            saveHost();
+            roomRef.child('latestNumber').set(drawnNum); roomRef.child('calledNumbers/' + drawnNum).set(true); saveHost();
         }
 
         function resetGame() {
             if (!confirm("Start next round with the same Room Code?")) return; 
-            numberBag = Array.from({length: 90}, (_, i) => i + 1);
-            myTicketNumbers = null; myMarkedNumbers = [];
-            currentDrawn = "Go!"; currentNumberDisplay.innerText = "Go!";
-            ticketCount = parseInt(document.getElementById('ticket-count-input').value);
-            document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called'));
-            generateHostTicket();
-            roomRef.child('resetTrigger').set(Date.now());
-            roomRef.child('latestNumber').set("Ready");
-            roomRef.child('calledNumbers').remove();
-            roomRef.child('claims').remove(); 
+            numberBag = Array.from({length: 90}, (_, i) => i + 1); myTicketNumbers = null; myMarkedNumbers = [];
+            currentDrawn = "Go!"; currentNumberDisplay.innerText = "Go!"; ticketCount = parseInt(document.getElementById('ticket-count-input').value);
+            document.querySelectorAll('.board-cell').forEach(cell => cell.classList.remove('called')); generateHostTicket();
+            roomRef.child('resetTrigger').set(Date.now()); roomRef.child('latestNumber').set("Ready"); roomRef.child('calledNumbers').remove(); roomRef.child('claims').remove(); 
             closeResetModal();
         }
 
-        function destroyRoom() {
-            if (!confirm("WARNING: This kicks all players and deletes the room. Proceed?")) return;
-            roomRef.remove(); localStorage.removeItem('housie_host'); window.location.reload(); 
-        }
+        function destroyRoom() { if (!confirm("WARNING: Kicks all players. Proceed?")) return; roomRef.remove(); localStorage.removeItem('housie_host'); window.location.reload(); }
 
         function setupFullBoard() {
-            const fullBoard = document.getElementById('full-board');
-            if (!fullBoard) return;
-            fullBoard.innerHTML = ''; 
-            for (let i = 1; i <= 90; i++) {
-                const cell = document.createElement('div');
-                cell.classList.add('board-cell');
-                cell.id = `board-num-${i}`;
-                cell.innerText = i;
-                fullBoard.appendChild(cell);
-            }
+            const fullBoard = document.getElementById('full-board'); if (!fullBoard) return; fullBoard.innerHTML = ''; 
+            for (let i = 1; i <= 90; i++) { const cell = document.createElement('div'); cell.classList.add('board-cell'); cell.id = `board-num-${i}`; cell.innerText = i; fullBoard.appendChild(cell); }
         }
 
         function generateHostTicket() {
-            const container = document.getElementById('host-ticket-container');
-            if (!container) return;
-            container.innerHTML = ''; 
-
+            const container = document.getElementById('host-ticket-container'); if (!container) return; container.innerHTML = ''; 
             if (!myTicketNumbers) {
                 myTicketNumbers = [];
-                const ticketLayouts = [
-                    [ [1, 0, 1, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1, 0, 1] ],
-                    [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 0, 1, 1] ],
-                    [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ],
-                    [ [0, 1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 1, 0, 1, 0, 1, 1, 0] ],
-                    [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 1, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 1, 1, 0] ]
-                ];
-
+                const ticketLayouts = [ [ [1, 0, 1, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 0, 1, 0, 1, 1], [1, 0, 1, 0, 1, 0, 1, 0, 1] ], [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 1, 0, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 0, 1, 1] ], [ [0, 1, 1, 0, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 0, 1, 1, 0, 1, 0, 1] ], [ [0, 1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1, 0], [0, 1, 1, 0, 1, 0, 1, 1, 0] ], [ [1, 0, 1, 0, 1, 1, 0, 1, 0], [1, 0, 1, 0, 1, 0, 1, 0, 1], [0, 1, 0, 1, 1, 0, 1, 1, 0] ] ];
                 for (let t = 0; t < ticketCount; t++) {
-                    let singleTicket = [[], [], []];
-                    const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)];
-                    const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
-
+                    let singleTicket = [[], [], []]; const ticketPattern = ticketLayouts[Math.floor(Math.random() * ticketLayouts.length)]; const colRanges = [[1, 9], [10, 19], [20, 29], [30, 39], [40, 49], [50, 59], [60, 69], [70, 79], [80, 90]];
                     for (let col = 0; col < 9; col++) {
-                        let numbersNeeded = (ticketPattern[0][col] + ticketPattern[1][col] + ticketPattern[2][col]);
-                        let possibleNumbers = [];
+                        let numbersNeeded = (ticketPattern[0][col] + ticketPattern[1][col] + ticketPattern[2][col]); let possibleNumbers = [];
                         for (let i = colRanges[col][0]; i <= colRanges[col][1]; i++) possibleNumbers.push(i);
-                        let selectedForCol = [];
-                        for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
-                        selectedForCol.sort((a, b) => a - b); 
-                        let numIndex = 0;
+                        let selectedForCol = []; for (let n = 0; n < numbersNeeded; n++) selectedForCol.push(possibleNumbers.splice(Math.floor(Math.random() * possibleNumbers.length), 1)[0]);
+                        selectedForCol.sort((a, b) => a - b); let numIndex = 0;
                         for (let row = 0; row < 3; row++) singleTicket[row][col] = (ticketPattern[row][col] === 1) ? selectedForCol[numIndex++] : null;
                     }
                     myTicketNumbers.push(singleTicket);
@@ -338,58 +278,30 @@
             }
 
             for (let t = 0; t < myTicketNumbers.length; t++) {
-                const ticketDiv = document.createElement('div');
-                ticketDiv.className = 'ticket-grid';
-                ticketDiv.id = `ticket-grid-${t}`;
-                let ticketData = myTicketNumbers[t];
-
+                const ticketDiv = document.createElement('div'); ticketDiv.className = 'ticket-grid'; ticketDiv.id = `ticket-grid-${t}`; let ticketData = myTicketNumbers[t];
                 for (let row = 0; row < 3; row++) {
                     for (let col = 0; col < 9; col++) {
-                        const cell = document.createElement('div');
-                        cell.classList.add('cell');
-                        cell.classList.add(`row-${row}`);
-                        let cellVal = ticketData[row][col];
-
+                        const cell = document.createElement('div'); cell.classList.add('cell'); cell.classList.add(`row-${row}`); let cellVal = ticketData[row][col];
                         if (cellVal !== null) {
-                            cell.innerText = cellVal;
-                            if (myMarkedNumbers.includes(cellVal)) cell.classList.add('marked');
-
-                            // USING CLICK EVENT + SHAKE ANIMATION
+                            cell.innerText = cellVal; if (myMarkedNumbers.includes(cellVal)) cell.classList.add('marked');
                             cell.addEventListener('click', function() { 
                                 if(document.getElementById(`board-num-${cellVal}`).classList.contains('called')) {
                                     this.classList.toggle('marked'); 
-                                    if(this.classList.contains('marked')) {
-                                        if(!myMarkedNumbers.includes(cellVal)) myMarkedNumbers.push(cellVal);
-                                    } else {
-                                        myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal);
-                                    }
+                                    if(this.classList.contains('marked')) { if(!myMarkedNumbers.includes(cellVal)) myMarkedNumbers.push(cellVal); } else { myMarkedNumbers = myMarkedNumbers.filter(n => n !== cellVal); }
                                     saveHost();
-                                    
-                                    // Magic Sync
-                                    document.querySelectorAll('#host-ticket-container .cell').forEach(c => {
-                                        if(parseInt(c.innerText) === cellVal) {
-                                            if(myMarkedNumbers.includes(cellVal)) c.classList.add('marked');
-                                            else c.classList.remove('marked');
-                                        }
-                                    });
+                                    document.querySelectorAll('#host-ticket-container .cell').forEach(c => { if(parseInt(c.innerText) === cellVal) { if(myMarkedNumbers.includes(cellVal)) c.classList.add('marked'); else c.classList.remove('marked'); } });
                                 } else {
-                                    // ERROR SHAKE INSTEAD OF ALERT
-                                    this.classList.add('error-shake');
-                                    setTimeout(() => this.classList.remove('error-shake'), 300);
+                                    this.classList.add('error-shake'); setTimeout(() => this.classList.remove('error-shake'), 300);
                                 }
                             });
-                        } else {
-                            cell.classList.add('empty');
-                        }
+                        } else { cell.classList.add('empty'); }
                         ticketDiv.appendChild(cell);
                     }
                 }
                 container.appendChild(ticketDiv);
             }
         }
-
-        setupFullBoard();
-        generateHostTicket();
+        setupFullBoard(); generateHostTicket();
     </script>
 </body>
 </html>
